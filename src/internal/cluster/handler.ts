@@ -502,6 +502,10 @@ export class Handler {
     async execute(isWrite: boolean, payload: Buffer): Promise<RawResult> {
         if (payload.length === 0) throw new Error('empty payload');
 
+        if (isWrite && !this.leaderConn) {
+            throw new ClusterError("cluster has no leader");
+        }
+
         const result = await new Promise<RawResult>((resolve, reject) => {
             this.reqChan.send({ payload, resolve, reject, isWrite })
                 .catch(reject);
