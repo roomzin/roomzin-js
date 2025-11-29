@@ -1,5 +1,5 @@
-import { SingleClient } from 'roomzin-js';
-import type { CacheClientAPI } from 'roomzin-js';
+import { SingleClient } from '../src/single';
+import { CacheClientAPI } from '../src/api/client';
 
 import {
     seedTestData,
@@ -13,7 +13,7 @@ import {
     checkDeletionCommands,
     checkGetSegments,
     checkDelSegment,
-} from '../utils';
+} from './utils';
 
 async function getClient(): Promise<CacheClientAPI> {
     return await SingleClient.create({

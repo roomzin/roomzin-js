@@ -99,6 +99,19 @@ export async function healthCheck(
     }
 }
 
+async function getPeers(
+    host: string,
+    port: number,
+    authToken: string,
+    timeoutMs: number
+): Promise<string[]> {
+    try {
+        return await httpGet<string[]>(host, port, '/peers', authToken, timeoutMs);
+    } catch {
+        return [];
+    }
+}
+
 export async function getClusterInfo(cfg: HandlerConfig): Promise<{ leader: string; followers: string[] }> {
     const hosts = parseHosts(cfg.SeedHosts);
 
@@ -108,17 +121,54 @@ export async function getClusterInfo(cfg: HandlerConfig): Promise<{ leader: stri
         leaderURL: string;
     }
 
-    const nodes: Node[] = [];
+    const existing = new Set(hosts);
+    const discovered = new Map<string, boolean>(); // FIX: Use Map to track state
+    const nodes = new Map<string, Node>();
 
-    await Promise.all(
-        hosts.map(async (host) => {
+    // First phase: collect all node information and discover peers
+    const firstPhasePromises = hosts.map(async (host) => {
+        try {
+            const health = await healthCheck(host, cfg.APIPort, cfg.AuthToken, cfg.HttpTimeout);
+            if (health === 'unavailable') return;
+
+            const info = await getNodeInfo(host, cfg.APIPort, cfg.AuthToken, cfg.HttpTimeout);
+
+            nodes.set(host, {
+                host,
+                health,
+                leaderURL: info.leader_url,
+            });
+        } catch {
+            // ignore dead nodes for health/node-info, but still try to discover peers
+        }
+
+        // FIX: Peer discovery happens regardless of node info success
+        try {
+            const peers = await getPeers(host, cfg.APIPort, cfg.AuthToken, cfg.HttpTimeout);
+            for (const peer of peers) {
+                if (!existing.has(peer)) {
+                    // FIX: Thread-safe discovery tracking
+                    discovered.set(peer, true);
+                }
+            }
+        } catch {
+            // ignore peer discovery failures
+        }
+    });
+
+    await Promise.all(firstPhasePromises);
+
+    // Second phase: check newly discovered nodes
+    if (discovered.size > 0) {
+        const discoveredHosts = Array.from(discovered.keys());
+        const secondPhasePromises = discoveredHosts.map(async (host) => {
             try {
                 const health = await healthCheck(host, cfg.APIPort, cfg.AuthToken, cfg.HttpTimeout);
                 if (health === 'unavailable') return;
 
                 const info = await getNodeInfo(host, cfg.APIPort, cfg.AuthToken, cfg.HttpTimeout);
 
-                nodes.push({
+                nodes.set(host, {
                     host,
                     health,
                     leaderURL: info.leader_url,
@@ -126,20 +176,46 @@ export async function getClusterInfo(cfg: HandlerConfig): Promise<{ leader: stri
             } catch {
                 // ignore dead nodes
             }
-        })
-    );
+        });
 
+        await Promise.all(secondPhasePromises);
+    }
+
+    // Third phase: determine leader using voting system
+    const votes = new Map<string, number>();
+
+    // Count votes for each leader URL
+    for (const node of nodes.values()) {
+        if (node.leaderURL) {
+            votes.set(node.leaderURL, (votes.get(node.leaderURL) || 0) + 1);
+        }
+    }
+
+    // Find the leader URL with most votes
+    let leaderURL = '';
+    let maxVotes = 0;
+    for (const [url, count] of votes.entries()) {
+        if (count > maxVotes) {
+            maxVotes = count;
+            leaderURL = url;
+        }
+    }
+
+    if (!leaderURL) {
+        throw ErrNoLeaderAvailable;
+    }
+
+    // Find the actual leader host and trusted followers
     let leader = '';
     const followers: string[] = [];
 
-    for (const n of nodes) {
-        switch (n.health) {
-            case 'active_leader':
-                leader = n.host;
-                break;
-            case 'active_follower':
-                followers.push(n.host);
-                break;
+    for (const node of nodes.values()) {
+        if (node.leaderURL === leaderURL) {
+            if (node.health === 'active_leader') {
+                leader = node.host;
+            } else if (node.health === 'active_follower') {
+                followers.push(node.host);
+            }
         }
     }
 
