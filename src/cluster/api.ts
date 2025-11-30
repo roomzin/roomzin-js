@@ -3,7 +3,7 @@ import { Handler } from '../internal/cluster/handler';
 import type { ClusterConfig } from './config';
 import type { CacheClientAPI } from '../api/client';
 import type { Codecs } from '../types/codecs';
-import type { RawResult } from '../internal/protocol/types';
+import type { Field, RawResult } from '../internal/protocol/types';
 
 import {
     buildGetCodecsPayload,
@@ -84,10 +84,11 @@ export class Client implements CacheClientAPI {
         return client;
     }
 
-    private getCodecsSync(): Codecs {
-        if (!this.codecs) {
-            throw new Error('codecs not initialized');
+    private async getCodecsInternal(): Promise<Codecs> {
+        if (this.codecs != null) {
+            return this.codecs;
         }
+        this.codecs = await this.fetchCodecs();
         return this.codecs;
     }
 
@@ -102,9 +103,13 @@ export class Client implements CacheClientAPI {
         return codecs;
     }
 
-    private throwIfServerError(resp: RawResult, context: string): void {
-        if (resp.status === 'ERROR' && resp.fields.length > 0) {
-            throw new Error(`${context}: ${resp.fields[0].data.toString('utf8')}`);
+    private assertOk(resp: RawResult, context: string): void {
+        if (resp.status === 'ERROR') {
+            const msg = resp.fields.length > 0 ? resp.fields[0].data.toString('utf8') : 'unknown error';
+            throw new Error(`${context}: ${msg}`);
+        }
+        if (resp.status !== 'SUCCESS') {
+            throw new Error(`${context}: unexpected status "${resp.status}"`);
         }
     }
 
@@ -117,25 +122,25 @@ export class Client implements CacheClientAPI {
     }
 
     async setProp(p: SetPropPayload): Promise<void> {
-        const codecs = this.getCodecsSync();
+        const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySetPropPayload(p, codecs);
         if (!valid) throw new Error(`${errMsg}`);
 
         const payload = buildSetPropPayload(p);
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'setProp');
+        this.assertOk(resp, 'setProp');
         const err = parseSetPropResp(resp.status, resp.fields);
         if (err != null) throw err;
     }
 
     async setRoomPkg(p: SetRoomPkgPayload): Promise<void> {
-        const codecs = this.getCodecsSync();
+        const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySetRoomPkgPayload(p, codecs);
         if (!valid) throw new Error(`${errMsg}`);
 
         const payload = buildSetRoomPkgPayload(p);
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'setRoomPkg');
+        this.assertOk(resp, 'setRoomPkg');
         const err = parseSetRoomPkgResp(resp.status, resp.fields);
         if (err != null) throw err;
     }
@@ -146,7 +151,7 @@ export class Client implements CacheClientAPI {
 
         const payload = buildSetRoomAvlPayload(p);
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'setRoomAvl');
+        this.assertOk(resp, 'setRoomAvl');
         return parseSetRoomAvlResp(resp.status, resp.fields);
     }
 
@@ -156,7 +161,7 @@ export class Client implements CacheClientAPI {
 
         const payload = buildIncRoomAvlPayload(p);
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'incRoomAvl');
+        this.assertOk(resp, 'incRoomAvl');
         return parseIncRoomAvlResp(resp.status, resp.fields);
     }
 
@@ -166,29 +171,29 @@ export class Client implements CacheClientAPI {
 
         const payload = buildDecRoomAvlPayload(p);
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'decRoomAvl');
+        this.assertOk(resp, 'decRoomAvl');
         return parseDecRoomAvlResp(resp.status, resp.fields);
     }
 
     async searchProp(p: SearchPropPayload): Promise<string[]> {
-        const codecs = this.getCodecsSync();
+        const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySearchPropPayload(p, codecs);
         if (!valid) throw new Error(`${errMsg}`);
 
         const payload = buildSearchPropPayload(p);
         const resp = await this.handler.execute(false, payload);
-        this.throwIfServerError(resp, 'searchProp');
+        this.assertOk(resp, 'searchProp');
         return parseSearchPropResp(resp.status, resp.fields);
     }
 
     async searchAvail(p: SearchAvailPayload): Promise<any[]> {
-        const codecs = this.getCodecsSync();
+        const codecs = await this.getCodecsInternal();
         const [valid, errMsg] = verifySearchAvailPayload(p, codecs);
         if (!valid) throw new Error(`${errMsg}`);
 
         const payload = buildSearchAvailPayload(p);
         const resp = await this.handler.execute(false, payload);
-        this.throwIfServerError(resp, 'searchAvail');
+        this.assertOk(resp, 'searchAvail');
         return parseSearchAvailResp(codecs, resp.status, resp.fields);
     }
 
@@ -196,7 +201,7 @@ export class Client implements CacheClientAPI {
         if (!propertyID?.trim()) throw new Error('propertyID is required');
         const payload = buildPropExistPayload(propertyID.trim());
         const resp = await this.handler.execute(false, payload);
-        this.throwIfServerError(resp, 'propExist');
+        this.assertOk(resp, 'propExist');
         return parsePropExistResp(resp.status, resp.fields);
     }
 
@@ -206,7 +211,7 @@ export class Client implements CacheClientAPI {
 
         const payload = buildPropRoomExistPayload(p);
         const resp = await this.handler.execute(false, payload);
-        this.throwIfServerError(resp, 'propRoomExist');
+        this.assertOk(resp, 'propRoomExist');
         return parsePropRoomExistResp(resp.status, resp.fields);
     }
 
@@ -214,7 +219,7 @@ export class Client implements CacheClientAPI {
         if (!propertyID?.trim()) throw new Error('propertyID is required');
         const payload = buildPropRoomListPayload(propertyID.trim());
         const resp = await this.handler.execute(false, payload);
-        this.throwIfServerError(resp, 'propRoomList');
+        this.assertOk(resp, 'propRoomList');
         return parsePropRoomListResp(resp.status, resp.fields);
     }
 
@@ -224,7 +229,7 @@ export class Client implements CacheClientAPI {
 
         const payload = buildPropRoomDateListPayload(p);
         const resp = await this.handler.execute(false, payload);
-        this.throwIfServerError(resp, 'propRoomDateList');
+        this.assertOk(resp, 'propRoomDateList');
         return parsePropRoomDateListResp(resp.status, resp.fields);
     }
 
@@ -232,7 +237,7 @@ export class Client implements CacheClientAPI {
         if (!propertyID?.trim()) throw new Error('propertyID is required');
         const payload = buildDelPropPayload(propertyID.trim());
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'delProp');
+        this.assertOk(resp, 'delProp');
         const err = parseDelPropResp(resp.status, resp.fields);
         if (err != null) throw err;
     }
@@ -241,7 +246,7 @@ export class Client implements CacheClientAPI {
         if (!segment?.trim()) throw new Error('segment is required');
         const payload = buildDelSegmentPayload(segment.trim());
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'delSegment');
+        this.assertOk(resp, 'delSegment');
         const err = parseDelSegmentResp(resp.status, resp.fields);
         if (err != null) throw err;
     }
@@ -252,7 +257,7 @@ export class Client implements CacheClientAPI {
 
         const payload = buildDelPropDayPayload(p);
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'delPropDay');
+        this.assertOk(resp, 'delPropDay');
         const err = parseDelPropDayResp(resp.status, resp.fields);
         if (err != null) throw err;
     }
@@ -263,7 +268,7 @@ export class Client implements CacheClientAPI {
 
         const payload = buildDelPropRoomPayload(p);
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'delPropRoom');
+        this.assertOk(resp, 'delPropRoom');
         const err = parseDelPropRoomResp(resp.status, resp.fields);
         if (err != null) throw err;
     }
@@ -274,7 +279,7 @@ export class Client implements CacheClientAPI {
 
         const payload = buildDelRoomDayPayload(p);
         const resp = await this.handler.execute(true, payload);
-        this.throwIfServerError(resp, 'delRoomDay');
+        this.assertOk(resp, 'delRoomDay');
         const err = parseDelRoomDayResp(resp.status, resp.fields);
         if (err != null) throw err;
     }
@@ -285,14 +290,15 @@ export class Client implements CacheClientAPI {
 
         const payload = buildGetPropRoomDayPayload(p);
         const resp = await this.handler.execute(false, payload);
-        this.throwIfServerError(resp, 'getPropRoomDay');
-        return parseGetPropRoomDayResp(this.getCodecsSync(), resp.status, resp.fields);
+        this.assertOk(resp, 'getPropRoomDay');
+        const codecs = await this.getCodecsInternal();
+        return parseGetPropRoomDayResp(codecs, resp.status, resp.fields);
     }
 
     async getSegments(): Promise<any[]> {
         const payload = buildGetSegmentsPayload();
         const resp = await this.handler.execute(false, payload);
-        this.throwIfServerError(resp, 'getSegments');
+        this.assertOk(resp, 'getSegments');
         return parseGetSegmentsResp(resp.status, resp.fields);
     }
 

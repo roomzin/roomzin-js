@@ -99,10 +99,11 @@ export class Client implements CacheClientAPI {
     }
 
     // Returns cached codecs synchronously (safe because we pre-fetch on create)
-    private getCodecsSync(): Codecs {
-        if (!this.codecs) {
-            throw new Error('codecs not loaded yet');
+    private async getCodecsInternal(): Promise<Codecs> {
+        if (this.codecs != null) {
+            return this.codecs;
         }
+        this.codecs = await this.fetchCodecs();
         return this.codecs;
     }
 
@@ -127,7 +128,7 @@ export class Client implements CacheClientAPI {
     // ———————————————————————— API ————————————————————————
 
     async setProp(p: SetPropPayload): Promise<void> {
-        const codecs = this.getCodecsSync();
+        const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySetPropPayload(p, codecs);
         if (!valid) throw new Error(`${errMsg}`);
 
@@ -137,7 +138,7 @@ export class Client implements CacheClientAPI {
     }
 
     async searchProp(p: SearchPropPayload): Promise<string[]> {
-        const codecs = this.getCodecsSync();
+        const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySearchPropPayload(p, codecs);
         if (!valid) throw new Error(`${errMsg}`);
 
@@ -148,7 +149,7 @@ export class Client implements CacheClientAPI {
     }
 
     async searchAvail(p: SearchAvailPayload): Promise<any[]> {
-        const codecs = this.getCodecsSync();
+        const codecs = await this.getCodecsInternal();
         const [valid, errMsg] = verifySearchAvailPayload(p, codecs);
         if (!valid) throw new Error(`${errMsg}`);
 
@@ -159,7 +160,7 @@ export class Client implements CacheClientAPI {
     }
 
     async setRoomPkg(p: SetRoomPkgPayload): Promise<void> {
-        const codecs = this.getCodecsSync();
+        const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySetRoomPkgPayload(p, codecs);
         if (!valid) throw new Error(`${errMsg}`);
 
@@ -282,7 +283,8 @@ export class Client implements CacheClientAPI {
         const payload = buildGetPropRoomDayPayload(p);
         const res = await this.roundTrip(payload);
         this.assertOk(res.status, res.fields, 'getPropRoomDay');
-        return parseGetPropRoomDayResp(this.getCodecsSync(), res.status, res.fields);
+        const codecs = await this.getCodecsInternal();
+        return parseGetPropRoomDayResp(codecs, res.status, res.fields);
     }
 
     async getSegments(): Promise<any[]> {
