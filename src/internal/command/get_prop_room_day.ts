@@ -49,12 +49,12 @@ export function parseGetPropRoomDayResp(
         const msg = fields.length > 0 && fields[0].fieldType === 0x01
             ? fields[0].data.toString('utf8')
             : '';
-        throw new Error(msg);
+        throw RzError(msg);
     }
 
     // SUCCESS response has exactly 5 fields
     if (fields.length < 5) {
-        throw new Error(`expected 5 response fields, got ${fields.length}`);
+        throw RzError(`expected 5 response fields, got ${fields.length}`);
     }
 
     const [f0, f1, f2, f3, f4] = fields;

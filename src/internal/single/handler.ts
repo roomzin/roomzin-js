@@ -129,7 +129,7 @@ export class SingleHandler {
     async roundTrip(clrId: number, payload: Buffer): Promise<RawResult> {
         const release = await this.mu.acquire();
         try {
-            if (this.closed) throw ErrConnClosed;
+            if (this.closed) throw RzError(err)ConnClosed;
 
             // Self-heal: reconnect if connection is gone
             if (!this.conn || this.conn.destroyed) {
@@ -161,7 +161,7 @@ export class SingleHandler {
             return await promise;
         } catch (err) {
             release();
-            throw err;
+            throw RzError(err);
         }
     }
 

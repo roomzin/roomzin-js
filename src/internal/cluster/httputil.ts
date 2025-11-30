@@ -202,7 +202,7 @@ export async function getClusterInfo(cfg: HandlerConfig): Promise<{ leader: stri
     }
 
     if (!leaderURL) {
-        throw ErrNoLeaderAvailable;
+        throw RzError(err)NoLeaderAvailable;
     }
 
     // Find the actual leader host and trusted followers
@@ -220,7 +220,7 @@ export async function getClusterInfo(cfg: HandlerConfig): Promise<{ leader: stri
     }
 
     if (!leader) {
-        throw ErrNoLeaderAvailable;
+        throw RzError(err)NoLeaderAvailable;
     }
 
     return { leader, followers };

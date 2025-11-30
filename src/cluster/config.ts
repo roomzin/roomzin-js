@@ -68,7 +68,7 @@ export class ClusterConfigBuilder {
         if (!this.config.authToken) errors.push('authentication requires a token');
 
         if (errors.length > 0) {
-            throw new Error(`ClusterConfig validation failed:\n  • ${errors.join('\n  • ')}`);
+            throw RzError(`ClusterConfig validation failed:\n  • ${errors.join('\n  • ')}`);
         }
 
         // Return a shallow clone + freeze for immutability

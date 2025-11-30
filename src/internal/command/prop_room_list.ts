@@ -37,7 +37,7 @@ export function parsePropRoomListResp(status: string, fields: Field[]): string[]
         const msg = fields.length > 0 && fields[0].fieldType === 0x01
             ? fields[0].data.toString('utf8')
             : '';
-        throw new Error(msg);
+        throw RzError(msg);
     }
 
     // SUCCESS → all fields are room type strings

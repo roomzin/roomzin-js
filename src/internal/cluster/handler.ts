@@ -31,7 +31,7 @@ class Channel<T> extends EventEmitter {
 
     // In Channel<T>
     async send(value: T): Promise<void> {   // ← async + Promise<void>
-        if (this.closed) throw new Error('channel closed');
+        if (this.closed) throw RzError('channel closed');
 
         if (this.resolvers.length > 0) {
             this.resolvers.shift()!(value);
@@ -50,7 +50,7 @@ class Channel<T> extends EventEmitter {
 
     async receive(): Promise<T> {
         if (this.buffer.length > 0) return this.buffer.shift()!;
-        if (this.closed) throw new Error('channel closed');
+        if (this.closed) throw RzError('channel closed');
         return new Promise<T>(resolve => {
             this.resolvers.push(resolve);
         });
@@ -201,7 +201,7 @@ class Connection extends EventEmitter {
             }
 
             if (this.pendingHeader[0] !== 0xFF) {
-                throw new Error(`bad magic: 0x${this.pendingHeader[0].toString(16)}`);
+                throw RzError(`bad magic: 0x${this.pendingHeader[0].toString(16)}`);
             }
 
             const clrID = this.pendingHeader.readUInt32LE(1);
@@ -500,10 +500,10 @@ export class Handler {
     }
 
     async execute(isWrite: boolean, payload: Buffer): Promise<RawResult> {
-        if (payload.length === 0) throw new Error('empty payload');
+        if (payload.length === 0) throw RzError('empty payload');
 
         if (isWrite && !this.leaderConn) {
-            throw new Error("cluster has no leader");
+            throw RzError("cluster has no leader");
         }
 
         const result = await new Promise<RawResult>((resolve, reject) => {
@@ -531,7 +531,7 @@ export class Handler {
             if (retryResult.status === 'SUCCESS') return retryResult;
         }
 
-        throw new Error(`${code}`);
+        throw RzError(`${code}`);
     }
 
     async close(): Promise<void> {

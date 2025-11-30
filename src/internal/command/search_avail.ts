@@ -70,13 +70,13 @@ export function parseSearchAvailResp(
         const msg = fields.length > 0 && fields[0].fieldType === 0x01
             ? fields[0].data.toString('utf8')
             : `search failed with status=${status}`;
-        throw new Error(msg);
+        throw RzError(msg);
     }
 
     // First field: num_days (id=1, type=0x02, 2 bytes)
     const numDaysField = fields[0];
     if (numDaysField.id !== 1 || numDaysField.fieldType !== 0x02 || numDaysField.data.length !== 2) {
-        throw new Error('expected num_days field (id=1, type=0x02, len=2)');
+        throw RzError('expected num_days field (id=1, type=0x02, len=2)');
     }
     const numDays = numDaysField.data.readUInt16LE(0);
 
@@ -87,28 +87,28 @@ export function parseSearchAvailResp(
         // Property ID (string)
         const propField = fields[i++];
         if (propField.fieldType !== 0x01) {
-            throw new Error(`expected property ID string, got type 0x${propField.fieldType.toString(16)}`);
+            throw RzError(`expected property ID string, got type 0x${propField.fieldType.toString(16)}`);
         }
         const propertyID = bytesToPropertyID(propField.data);
 
         // Days vector (type 0x08)
-        if (i >= fields.length) throw new Error(`property "${propertyID}" missing days vector`);
+        if (i >= fields.length) throw RzError(`property "${propertyID}" missing days vector`);
         const daysField = fields[i++];
         if (daysField.fieldType !== 0x08) {
-            throw new Error(`expected days vector (0x08) for property "${propertyID}", got 0x${daysField.fieldType.toString(16)}`);
+            throw RzError(`expected days vector (0x08) for property "${propertyID}", got 0x${daysField.fieldType.toString(16)}`);
         }
 
         const data = daysField.data;
-        if (data.length < 2) throw new Error(`property "${propertyID}" days vector too short`);
+        if (data.length < 2) throw RzError(`property "${propertyID}" days vector too short`);
 
         const daysCount = data.readUInt16LE(0);
         if (daysCount !== numDays) {
-            throw new Error(`property "${propertyID}" days count mismatch: expected ${numDays}, got ${daysCount}`);
+            throw RzError(`property "${propertyID}" days count mismatch: expected ${numDays}, got ${daysCount}`);
         }
 
         const expectedLen = 2 + daysCount * 8;
         if (data.length !== expectedLen) {
-            throw new Error(`property "${propertyID}" days vector length mismatch: expected ${expectedLen}, got ${data.length}`);
+            throw RzError(`property "${propertyID}" days vector length mismatch: expected ${expectedLen}, got ${data.length}`);
         }
 
         const days: DayAvail[] = [];
@@ -134,7 +134,7 @@ export function parseSearchAvailResp(
     }
 
     if (i !== fields.length) {
-        throw new Error(`extra fields after parsing: consumed=${i}, total=${fields.length}`);
+        throw RzError(`extra fields after parsing: consumed=${i}, total=${fields.length}`);
     }
 
     return result;

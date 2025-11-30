@@ -40,11 +40,11 @@ export function parsePropRoomExistResp(status: string, fields: Field[]): boolean
     if (status === 'SUCCESS') {
         // SUCCESS → first field is a single byte: 1 = exists, 0 = does not exist
         if (!fields[0]?.data || fields[0].data.length === 0) {
-            throw new Error('invalid PROPROOMEXIST response: missing boolean byte');
+            throw RzError('invalid PROPROOMEXIST response: missing boolean byte');
         }
         return fields[0].data[0] === 1;
     }
 
     // On error (including "not found")
-    throw new Error('');
+    throw RzError('');
 }

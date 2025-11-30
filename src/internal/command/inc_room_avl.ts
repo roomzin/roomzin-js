@@ -42,11 +42,11 @@ export function parseIncRoomAvlResp(status: string, fields: Field[]): number {
     if (status === 'SUCCESS') {
         const b = fields[0]?.data;
         if (!b || b.length !== 1) {
-            throw new Error('missing or invalid scalar value');
+            throw RzError('missing or invalid scalar value');
         }
         return b[0];
     }
 
     const msg = fields[0]?.data.toString('utf8') ?? 'unknown error';
-    throw new Error(`${msg}`);
+    throw RzError(`${msg}`);
 }

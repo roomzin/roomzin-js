@@ -26,7 +26,7 @@ export async function drainFrame(stream: NodeJS.ReadableStream): Promise<[Header
 
     // Frame layout: [0xFF][ClrID:4][payloadLen:4]
     if (fix[0] !== 0xFF) {
-        throw new Error(`bad magic byte: got 0x${fix[0].toString(16).padStart(2, '0')}`);
+        throw RzError(`bad magic byte: got 0x${fix[0].toString(16).padStart(2, '0')}`);
     }
 
     const clrID = fix.readUInt32LE(1);
@@ -37,12 +37,12 @@ export async function drainFrame(stream: NodeJS.ReadableStream): Promise<[Header
     await readFull(stream, payload);
 
     if (payload.length < 1) {
-        throw new Error("short frame: no statusLen");
+        throw RzError("short frame: no statusLen");
     }
 
     const statusLen = payload[0];
     if (payload.length < 1 + statusLen + 2) {
-        throw new Error("short frame: missing status or fieldCount");
+        throw RzError("short frame: missing status or fieldCount");
     }
 
     const status = payload.toString('utf8', 1, 1 + statusLen);
@@ -65,7 +65,7 @@ export function parseFields(data: Buffer, fieldCount: number): Field[] {
 
     for (let i = 0; i < fieldCount; i++) {
         if (offset + 7 > data.length) {
-            throw new Error(`short frame: not enough bytes for field header at field ${i}`);
+            throw RzError(`short frame: not enough bytes for field header at field ${i}`);
         }
 
         const id = data.readUInt16LE(offset);
@@ -74,7 +74,7 @@ export function parseFields(data: Buffer, fieldCount: number): Field[] {
         offset += 7;
 
         if (offset + length > data.length) {
-            throw new Error(`short frame: not enough data for field payload (field ${i}, need ${length}, have ${data.length - offset})`);
+            throw RzError(`short frame: not enough data for field payload (field ${i}, need ${length}, have ${data.length - offset})`);
         }
 
         const fieldData = Buffer.from(data.subarray(offset, offset + length));
@@ -88,7 +88,7 @@ export function parseFields(data: Buffer, fieldCount: number): Field[] {
 
     // Rust version enforces: all fields must be consumed
     if (offset !== data.length) {
-        throw new Error(`extra ${data.length - offset} bytes after parsing fields`);
+        throw RzError(`extra ${data.length - offset} bytes after parsing fields`);
     }
 
     return fields;

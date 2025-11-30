@@ -47,9 +47,9 @@ export function parseDelPropDayResp(status: string, fields: Field[]): void {
 
     // If server sent an error message (type 0x01 = string)
     if (fields.length > 0 && fields[0].fieldType === 0x01) {
-        throw new Error(fields[0].data.toString('utf8'));
+        throw RzError(fields[0].data.toString('utf8'));
     }
 
     // Otherwise, generic empty error
-    throw new Error('');
+    throw RzError('');
 }

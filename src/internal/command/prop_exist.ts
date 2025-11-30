@@ -36,12 +36,12 @@ export function parsePropExistResp(status: string, fields: Field[]): boolean {
     if (status === 'SUCCESS') {
         // SUCCESS → field[0] is a single byte: 1 = exists, 0 = not exists
         if (!fields[0]?.data || fields[0].data.length < 1) {
-            throw new Error('invalid PROPEXIST response: missing boolean byte');
+            throw RzError('invalid PROPEXIST response: missing boolean byte');
         }
         return fields[0].data[0] === 1;
     }
 
     // Error path
     const msg = fields[0]?.data.toString('utf8') ?? 'unknown error';
-    throw new Error(`${msg}`);
+    throw RzError(`${msg}`);
 }

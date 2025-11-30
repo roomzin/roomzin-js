@@ -22,16 +22,16 @@ export function parseGetCodecsResp(status: string, fields: Field[]): Codecs {
         const msg = fields.length > 0 && fields[0].fieldType === 0x01
             ? fields[0].data.toString('utf8')
             : 'unknown error';
-        throw new Error(msg);
+        throw RzError(msg);
     }
 
     if (fields.length !== 1) {
-        throw new Error(`invalid field count: expected 1 field, got ${fields.length}`);
+        throw RzError(`invalid field count: expected 1 field, got ${fields.length}`);
     }
 
     const field = fields[0];
     if (field.fieldType !== 0x09) {
-        throw new Error(`expected YAML field type 0x09, got type ${field.fieldType}`);
+        throw RzError(`expected YAML field type 0x09, got type ${field.fieldType}`);
     }
 
     return parseCodecsFromDelimited(field.data);
@@ -42,7 +42,7 @@ function parseCodecsFromDelimited(data: Buffer): Codecs {
     const parts = str.split('|');
 
     if (parts.length !== 2) {
-        throw new Error(`invalid codecs format: expected 2 parts, got ${parts.length}`);
+        throw RzError(`invalid codecs format: expected 2 parts, got ${parts.length}`);
     }
 
     const amenities = parts[0].split(',').filter(item => item !== '');

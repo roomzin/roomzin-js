@@ -59,7 +59,7 @@ describe('Roomzin Cache – Full Standalone Flow', () => {
         } catch (err) {
             const duration = Date.now() - start;
             console.log(`Test failed after ${duration}ms`);
-            throw err; // Jest will mark it as failed
+            throw RzError(err); // Jest will mark it as failed
         }
     }, 90_000); // 90 second timeout (same as Go)
 });

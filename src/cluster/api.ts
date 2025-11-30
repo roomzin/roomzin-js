@@ -47,6 +47,7 @@ import {
 } from '../internal/command/index';
 
 import { DelPropDayRequest, DelPropRoomPayload, DelRoomDayRequest, GetRoomDayRequest, PropRoomDateListPayload, PropRoomExistPayload, SearchAvailPayload, SearchPropPayload, SetPropPayload, SetRoomPkgPayload, UpdRoomAvlPayload, verifyDelPropDayRequest, verifyDelRoomDayRequest, verifyGetRoomDayRequest, verifySearchAvailPayload, verifySearchPropPayload, verifySetPropPayload, verifySetRoomPkgPayload, verifyUpdRoomAvlPayload } from '../types/request';
+import { RzError } from '../internal/err';
 
 export class Client implements CacheClientAPI {
     private handler: Handler;
@@ -62,7 +63,7 @@ export class Client implements CacheClientAPI {
     }
 
     static async create(cfg: ClusterConfig): Promise<Client> {
-        if (!cfg) throw new Error('cfg must not be null');
+        if (!cfg) throw RzError('cfg must not be null');
 
 
         const handler = new Handler({
@@ -96,20 +97,20 @@ export class Client implements CacheClientAPI {
         const payload = buildGetCodecsPayload();
         const resp = await this.handler.execute(false, payload);
         if (resp.status === 'ERROR' && resp.fields.length > 0) {
-            throw new Error(resp.fields[0].data.toString('utf8'));
+            throw RzError(resp.fields[0].data.toString('utf8'));
         }
         const codecs = parseGetCodecsResp(resp.status, resp.fields);
-        if (!codecs) throw new Error('failed to parse codecs from server');
+        if (!codecs) throw RzError('failed to parse codecs from server');
         return codecs;
     }
 
     private assertOk(resp: RawResult, context: string): void {
         if (resp.status === 'ERROR') {
             const msg = resp.fields.length > 0 ? resp.fields[0].data.toString('utf8') : 'unknown error';
-            throw new Error(`${context}: ${msg}`);
+            throw RzError(`${context}: ${msg}`);
         }
         if (resp.status !== 'SUCCESS') {
-            throw new Error(`${context}: unexpected status "${resp.status}"`);
+            throw RzError(`${context}: unexpected status "${resp.status}"`);
         }
     }
 
@@ -124,30 +125,30 @@ export class Client implements CacheClientAPI {
     async setProp(p: SetPropPayload): Promise<void> {
         const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySetPropPayload(p, codecs);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSetPropPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'setProp');
         const err = parseSetPropResp(resp.status, resp.fields);
-        if (err != null) throw err;
+        if (err != null) throw RzError(err);
     }
 
     async setRoomPkg(p: SetRoomPkgPayload): Promise<void> {
         const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySetRoomPkgPayload(p, codecs);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSetRoomPkgPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'setRoomPkg');
         const err = parseSetRoomPkgResp(resp.status, resp.fields);
-        if (err != null) throw err;
+        if (err != null) throw RzError(err);
     }
 
     async setRoomAvl(p: UpdRoomAvlPayload): Promise<number> {
         const [valid, errMsg] = verifyUpdRoomAvlPayload(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSetRoomAvlPayload(p);
         const resp = await this.handler.execute(true, payload);
@@ -157,7 +158,7 @@ export class Client implements CacheClientAPI {
 
     async incRoomAvl(p: UpdRoomAvlPayload): Promise<number> {
         const [valid, errMsg] = verifyUpdRoomAvlPayload(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildIncRoomAvlPayload(p);
         const resp = await this.handler.execute(true, payload);
@@ -167,7 +168,7 @@ export class Client implements CacheClientAPI {
 
     async decRoomAvl(p: UpdRoomAvlPayload): Promise<number> {
         const [valid, errMsg] = verifyUpdRoomAvlPayload(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildDecRoomAvlPayload(p);
         const resp = await this.handler.execute(true, payload);
@@ -178,7 +179,7 @@ export class Client implements CacheClientAPI {
     async searchProp(p: SearchPropPayload): Promise<string[]> {
         const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySearchPropPayload(p, codecs);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSearchPropPayload(p);
         const resp = await this.handler.execute(false, payload);
@@ -189,7 +190,7 @@ export class Client implements CacheClientAPI {
     async searchAvail(p: SearchAvailPayload): Promise<any[]> {
         const codecs = await this.getCodecsInternal();
         const [valid, errMsg] = verifySearchAvailPayload(p, codecs);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSearchAvailPayload(p);
         const resp = await this.handler.execute(false, payload);
@@ -198,7 +199,7 @@ export class Client implements CacheClientAPI {
     }
 
     async propExist(propertyID: string): Promise<boolean> {
-        if (!propertyID?.trim()) throw new Error('propertyID is required');
+        if (!propertyID?.trim()) throw RzError('propertyID is required');
         const payload = buildPropExistPayload(propertyID.trim());
         const resp = await this.handler.execute(false, payload);
         this.assertOk(resp, 'propExist');
@@ -206,8 +207,8 @@ export class Client implements CacheClientAPI {
     }
 
     async propRoomExist(p: PropRoomExistPayload): Promise<boolean> {
-        if (!p.propertyID?.trim()) throw new Error('propertyID is required');
-        if (!p.roomType?.trim()) throw new Error('roomType is required');
+        if (!p.propertyID?.trim()) throw RzError('propertyID is required');
+        if (!p.roomType?.trim()) throw RzError('roomType is required');
 
         const payload = buildPropRoomExistPayload(p);
         const resp = await this.handler.execute(false, payload);
@@ -216,7 +217,7 @@ export class Client implements CacheClientAPI {
     }
 
     async propRoomList(propertyID: string): Promise<string[]> {
-        if (!propertyID?.trim()) throw new Error('propertyID is required');
+        if (!propertyID?.trim()) throw RzError('propertyID is required');
         const payload = buildPropRoomListPayload(propertyID.trim());
         const resp = await this.handler.execute(false, payload);
         this.assertOk(resp, 'propRoomList');
@@ -224,8 +225,8 @@ export class Client implements CacheClientAPI {
     }
 
     async propRoomDateList(p: PropRoomDateListPayload): Promise<string[]> {
-        if (!p.propertyID?.trim()) throw new Error('propertyID is required');
-        if (!p.roomType?.trim()) throw new Error('roomType is required');
+        if (!p.propertyID?.trim()) throw RzError('propertyID is required');
+        if (!p.roomType?.trim()) throw RzError('roomType is required');
 
         const payload = buildPropRoomDateListPayload(p);
         const resp = await this.handler.execute(false, payload);
@@ -234,59 +235,59 @@ export class Client implements CacheClientAPI {
     }
 
     async delProp(propertyID: string): Promise<void> {
-        if (!propertyID?.trim()) throw new Error('propertyID is required');
+        if (!propertyID?.trim()) throw RzError('propertyID is required');
         const payload = buildDelPropPayload(propertyID.trim());
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delProp');
         const err = parseDelPropResp(resp.status, resp.fields);
-        if (err != null) throw err;
+        if (err != null) throw RzError(err);
     }
 
     async delSegment(segment: string): Promise<void> {
-        if (!segment?.trim()) throw new Error('segment is required');
+        if (!segment?.trim()) throw RzError('segment is required');
         const payload = buildDelSegmentPayload(segment.trim());
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delSegment');
         const err = parseDelSegmentResp(resp.status, resp.fields);
-        if (err != null) throw err;
+        if (err != null) throw RzError(err);
     }
 
     async delPropDay(p: DelPropDayRequest): Promise<void> {
         const [valid, errMsg] = verifyDelPropDayRequest(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildDelPropDayPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delPropDay');
         const err = parseDelPropDayResp(resp.status, resp.fields);
-        if (err != null) throw err;
+        if (err != null) throw RzError(err);
     }
 
     async delPropRoom(p: DelPropRoomPayload): Promise<void> {
-        if (!p.propertyID?.trim()) throw new Error('propertyID is required');
-        if (!p.roomType?.trim()) throw new Error('roomType is required');
+        if (!p.propertyID?.trim()) throw RzError('propertyID is required');
+        if (!p.roomType?.trim()) throw RzError('roomType is required');
 
         const payload = buildDelPropRoomPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delPropRoom');
         const err = parseDelPropRoomResp(resp.status, resp.fields);
-        if (err != null) throw err;
+        if (err != null) throw RzError(err);
     }
 
     async delRoomDay(p: DelRoomDayRequest): Promise<void> {
         const [valid, errMsg] = verifyDelRoomDayRequest(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildDelRoomDayPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delRoomDay');
         const err = parseDelRoomDayResp(resp.status, resp.fields);
-        if (err != null) throw err;
+        if (err != null) throw RzError(err);
     }
 
     async getPropRoomDay(p: GetRoomDayRequest): Promise<any> {
         const [valid, errMsg] = verifyGetRoomDayRequest(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildGetPropRoomDayPayload(p);
         const resp = await this.handler.execute(false, payload);

@@ -47,6 +47,7 @@ import {
 } from '../internal/command/index';
 
 import { DelPropDayRequest, DelPropRoomPayload, DelRoomDayRequest, GetRoomDayRequest, PropRoomDateListPayload, PropRoomExistPayload, SearchAvailPayload, SearchPropPayload, SetPropPayload, SetRoomPkgPayload, UpdRoomAvlPayload, verifyDelPropDayRequest, verifyDelRoomDayRequest, verifyGetRoomDayRequest, verifySearchAvailPayload, verifySearchPropPayload, verifySetPropPayload, verifySetRoomPkgPayload, verifyUpdRoomAvlPayload } from '../types/request';
+import { RzError } from '../internal/err';
 
 export class Client implements CacheClientAPI {
     private handler: SingleHandler;
@@ -59,7 +60,7 @@ export class Client implements CacheClientAPI {
     }
 
     static async create(cfg: Config): Promise<Client> {
-        if (!cfg) throw new Error('cfg must not be null');
+        if (!cfg) throw RzError('cfg must not be null');
 
         const handler = new SingleHandler({
             addr: cfg.host,
@@ -85,7 +86,7 @@ export class Client implements CacheClientAPI {
     }
 
     private async roundTrip(payload: Buffer): Promise<RawResult> {
-        if (this.closed) throw new Error('client is closed');
+        if (this.closed) throw RzError('client is closed');
         const clrId = this.nextID();
         return await this.handler.roundTrip(clrId, payload);
     }
@@ -94,7 +95,7 @@ export class Client implements CacheClientAPI {
         const payload = buildGetCodecsPayload();
         const res = await this.roundTrip(payload);
         const codecs = parseGetCodecsResp(res.status, res.fields);
-        if (!codecs) throw new Error('failed to get codecs list from server');
+        if (!codecs) throw RzError('failed to get codecs list from server');
         return codecs;
     }
 
@@ -118,10 +119,10 @@ export class Client implements CacheClientAPI {
     private assertOk(status: string, fields: Field[], context: string): void {
         if (status === 'ERROR') {
             const msg = fields.length > 0 ? fields[0].data.toString('utf8') : 'unknown error';
-            throw new Error(`${context}: ${msg}`);
+            throw RzError(`${context}: ${msg}`);
         }
         if (status !== 'SUCCESS') {
-            throw new Error(`${context}: unexpected status "${status}"`);
+            throw RzError(`${context}: unexpected status "${status}"`);
         }
     }
 
@@ -130,7 +131,7 @@ export class Client implements CacheClientAPI {
     async setProp(p: SetPropPayload): Promise<void> {
         const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySetPropPayload(p, codecs);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSetPropPayload(p);
         const res = await this.roundTrip(payload);
@@ -140,7 +141,7 @@ export class Client implements CacheClientAPI {
     async searchProp(p: SearchPropPayload): Promise<string[]> {
         const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySearchPropPayload(p, codecs);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSearchPropPayload(p);
         const res = await this.roundTrip(payload);
@@ -151,7 +152,7 @@ export class Client implements CacheClientAPI {
     async searchAvail(p: SearchAvailPayload): Promise<any[]> {
         const codecs = await this.getCodecsInternal();
         const [valid, errMsg] = verifySearchAvailPayload(p, codecs);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSearchAvailPayload(p);
         const res = await this.roundTrip(payload);
@@ -162,7 +163,7 @@ export class Client implements CacheClientAPI {
     async setRoomPkg(p: SetRoomPkgPayload): Promise<void> {
         const codecs = this.getCodecsInternal();
         const [valid, errMsg] = verifySetRoomPkgPayload(p, codecs);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSetRoomPkgPayload(p);
         const res = await this.roundTrip(payload);
@@ -171,7 +172,7 @@ export class Client implements CacheClientAPI {
 
     async setRoomAvl(p: UpdRoomAvlPayload): Promise<number> {
         const [valid, errMsg] = verifyUpdRoomAvlPayload(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildSetRoomAvlPayload(p);
         const res = await this.roundTrip(payload);
@@ -181,7 +182,7 @@ export class Client implements CacheClientAPI {
 
     async incRoomAvl(p: UpdRoomAvlPayload): Promise<number> {
         const [valid, errMsg] = verifyUpdRoomAvlPayload(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildIncRoomAvlPayload(p);
         const res = await this.roundTrip(payload);
@@ -191,7 +192,7 @@ export class Client implements CacheClientAPI {
 
     async decRoomAvl(p: UpdRoomAvlPayload): Promise<number> {
         const [valid, errMsg] = verifyUpdRoomAvlPayload(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildDecRoomAvlPayload(p);
         const res = await this.roundTrip(payload);
@@ -200,7 +201,7 @@ export class Client implements CacheClientAPI {
     }
 
     async propExist(propertyID: string): Promise<boolean> {
-        if (!propertyID?.trim()) throw new Error('propertyID is required');
+        if (!propertyID?.trim()) throw RzError('propertyID is required');
         const payload = buildPropExistPayload(propertyID.trim());
         const res = await this.roundTrip(payload);
         this.assertOk(res.status, res.fields, 'propExist');
@@ -208,8 +209,8 @@ export class Client implements CacheClientAPI {
     }
 
     async propRoomExist(p: PropRoomExistPayload): Promise<boolean> {
-        if (!p.propertyID?.trim()) throw new Error('propertyID is required');
-        if (!p.roomType?.trim()) throw new Error('roomType is required');
+        if (!p.propertyID?.trim()) throw RzError('propertyID is required');
+        if (!p.roomType?.trim()) throw RzError('roomType is required');
 
         const payload = buildPropRoomExistPayload(p);
         const res = await this.roundTrip(payload);
@@ -218,7 +219,7 @@ export class Client implements CacheClientAPI {
     }
 
     async propRoomList(propertyID: string): Promise<string[]> {
-        if (!propertyID?.trim()) throw new Error('propertyID is required');
+        if (!propertyID?.trim()) throw RzError('propertyID is required');
         const payload = buildPropRoomListPayload(propertyID.trim());
         const res = await this.roundTrip(payload);
         this.assertOk(res.status, res.fields, 'propRoomList');
@@ -226,8 +227,8 @@ export class Client implements CacheClientAPI {
     }
 
     async propRoomDateList(p: PropRoomDateListPayload): Promise<string[]> {
-        if (!p.propertyID?.trim()) throw new Error('propertyID is required');
-        if (!p.roomType?.trim()) throw new Error('roomType is required');
+        if (!p.propertyID?.trim()) throw RzError('propertyID is required');
+        if (!p.roomType?.trim()) throw RzError('roomType is required');
 
         const payload = buildPropRoomDateListPayload(p);
         const res = await this.roundTrip(payload);
@@ -236,14 +237,14 @@ export class Client implements CacheClientAPI {
     }
 
     async delProp(propertyID: string): Promise<void> {
-        if (!propertyID?.trim()) throw new Error('propertyID is required');
+        if (!propertyID?.trim()) throw RzError('propertyID is required');
         const payload = buildDelPropPayload(propertyID.trim());
         const res = await this.roundTrip(payload);
         this.assertOk(res.status, res.fields, 'delProp');
     }
 
     async delSegment(segment: string): Promise<void> {
-        if (!segment?.trim()) throw new Error('segment is required');
+        if (!segment?.trim()) throw RzError('segment is required');
         const payload = buildDelSegmentPayload(segment.trim());
         const res = await this.roundTrip(payload);
         this.assertOk(res.status, res.fields, 'delSegment');
@@ -251,7 +252,7 @@ export class Client implements CacheClientAPI {
 
     async delPropDay(p: DelPropDayRequest): Promise<void> {
         const [valid, errMsg] = verifyDelPropDayRequest(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildDelPropDayPayload(p);
         const res = await this.roundTrip(payload);
@@ -259,8 +260,8 @@ export class Client implements CacheClientAPI {
     }
 
     async delPropRoom(p: DelPropRoomPayload): Promise<void> {
-        if (!p.propertyID?.trim()) throw new Error('propertyID is required');
-        if (!p.roomType?.trim()) throw new Error('roomType is required');
+        if (!p.propertyID?.trim()) throw RzError('propertyID is required');
+        if (!p.roomType?.trim()) throw RzError('roomType is required');
 
         const payload = buildDelPropRoomPayload(p);
         const res = await this.roundTrip(payload);
@@ -269,7 +270,7 @@ export class Client implements CacheClientAPI {
 
     async delRoomDay(p: DelRoomDayRequest): Promise<void> {
         const [valid, errMsg] = verifyDelRoomDayRequest(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildDelRoomDayPayload(p);
         const res = await this.roundTrip(payload);
@@ -278,7 +279,7 @@ export class Client implements CacheClientAPI {
 
     async getPropRoomDay(p: GetRoomDayRequest): Promise<any> {
         const [valid, errMsg] = verifyGetRoomDayRequest(p);
-        if (!valid) throw new Error(`${errMsg}`);
+        if (!valid) throw RzError(errMsg);
 
         const payload = buildGetPropRoomDayPayload(p);
         const res = await this.roundTrip(payload);

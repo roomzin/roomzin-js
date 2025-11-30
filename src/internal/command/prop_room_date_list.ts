@@ -41,7 +41,7 @@ export function parsePropRoomDateListResp(status: string, fields: Field[]): stri
         const msg = fields.length > 0 && fields[0].fieldType === 0x01
             ? fields[0].data.toString('utf8')
             : '';
-        throw new Error(msg);
+        throw RzError(msg);
     }
 
     const out: string[] = [];

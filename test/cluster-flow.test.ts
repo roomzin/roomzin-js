@@ -70,7 +70,7 @@ describe('Roomzin – Full Cluster Flow', () => {
         } catch (err) {
             const duration = Date.now() - start;
             console.log(`Test failed after ${duration}ms`);
-            throw err;
+            throw RzError(err);
         }
     }, 30_000);
 });

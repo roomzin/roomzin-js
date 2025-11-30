@@ -4,7 +4,7 @@ import { Field } from '../protocol/types';
 
 export function buildSetRoomPkgPayload(p: SetRoomPkgPayload): Buffer {
     if (!p.propertyID || !p.roomType || !p.date) {
-        throw new Error('missing required fields');
+        throw RzError('missing required fields');
     }
 
     const cmdName = 'SETROOMPKG';
@@ -83,5 +83,5 @@ export function parseSetRoomPkgResp(status: string, fields: Field[]): void {
 
     const msg = fields[0]?.data.toString('utf8') ?? 'unknown error';
     ;
-    throw new Error(`${msg}`);
+    throw RzError(`${msg}`);
 }

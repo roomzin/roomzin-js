@@ -27,7 +27,7 @@ export function u16ToDate(packed: number): string {
 
     // validation (UTC values)
     if (date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) {
-        throw new Error('invalid packed date');
+        throw RzError('invalid packed date');
     }
 
     // ISO string is already UTC, just drop the time part

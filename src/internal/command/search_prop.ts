@@ -51,9 +51,9 @@ export function buildSearchPropPayload(p: SearchPropPayload): Buffer {
 export function parseSearchPropResp(status: string, fields: Field[]): string[] {
     if (status !== 'SUCCESS') {
         if (fields.length > 0 && fields[0].id === 0x01 && fields[0].fieldType === 0x01) {
-            throw new Error(`search prop error: ${fields[0].data.toString('utf8')}`);
+            throw RzError(`search prop error: ${fields[0].data.toString('utf8')}`);
         }
-        throw new Error('search prop error: no error message');
+        throw RzError('search prop error: no error message');
     }
 
     const ids: string[] = [];
@@ -63,11 +63,11 @@ export function parseSearchPropResp(status: string, fields: Field[]): string[] {
 
         // expects field ID == i+1 (1-based sequential)
         if (f.id !== i + 1) {
-            throw new Error(`invalid field ID ${f.id}: expected ${i + 1}`);
+            throw RzError(`invalid field ID ${f.id}: expected ${i + 1}`);
         }
 
         if (f.fieldType !== 0x01) {
-            throw new Error(`invalid field type at ID ${f.id}: expected 0x01`);
+            throw RzError(`invalid field type at ID ${f.id}: expected 0x01`);
         }
 
         ids.push(bytesToPropertyID(f.data));

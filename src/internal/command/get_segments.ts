@@ -21,11 +21,11 @@ export function parseGetSegmentsResp(status: string, fields: Field[]): SegmentIn
         const msg = fields.length > 0 && fields[0].fieldType === 0x01
             ? fields[0].data.toString('utf8')
             : 'unknown error';
-        throw new Error(msg);
+        throw RzError(msg);
     }
 
     if (fields.length % 2 !== 0) {
-        throw new Error('invalid field count: expected pairs of segment and propCount');
+        throw RzError('invalid field count: expected pairs of segment and propCount');
     }
 
     const list: SegmentInfo[] = [];
@@ -36,16 +36,16 @@ export function parseGetSegmentsResp(status: string, fields: Field[]): SegmentIn
 
         // Field i: segment string (type 0x01)
         if (segmentField.fieldType !== 0x01) {
-            throw new Error(`expected string segment at field ${i}, got type ${segmentField.fieldType}`);
+            throw RzError(`expected string segment at field ${i}, got type ${segmentField.fieldType}`);
         }
         const segment = segmentField.data.toString('utf8');
 
         // Field i+1: propCount u32 (type 0x03, 4 bytes)
         if (countField.fieldType !== 0x03) {
-            throw new Error(`expected u32 propCount at field ${i + 1}, got type ${countField.fieldType}`);
+            throw RzError(`expected u32 propCount at field ${i + 1}, got type ${countField.fieldType}`);
         }
         if (countField.data.length !== 4) {
-            throw new Error(`invalid propCount length: expected 4 bytes, got ${countField.data.length}`);
+            throw RzError(`invalid propCount length: expected 4 bytes, got ${countField.data.length}`);
         }
 
         const propCount = countField.data.readUInt32LE(0);

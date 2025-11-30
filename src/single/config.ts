@@ -59,7 +59,7 @@ export class ConfigBuilder {
         }
 
         if (errors.length > 0) {
-            throw new Error(`Config validation failed:\n  - ${errors.join('\n  - ')}`);
+            throw RzError(`Config validation failed:\n  - ${errors.join('\n  - ')}`);
         }
 
         return { ...this.config };

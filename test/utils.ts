@@ -128,7 +128,7 @@ export async function checkSegmentIsolation(c: CacheClientAPI): Promise<void> {
         const ids = await c.searchProp({ segment: seg });
         for (const id of ids) {
             if (!id.startsWith(seg + '_')) {
-                throw new Error(`segment leak: ${id} found in ${seg} search`);
+                throw RzError(`segment leak: ${id} found in ${seg} search`);
             }
         }
     }
@@ -146,7 +146,7 @@ export async function checkAmenitiesAndCancel(c: CacheClientAPI): Promise<void> 
     });
 
     if (avail.length === 0) {
-        throw new Error('expected at least one result with pool');
+        throw RzError('expected at least one result with pool');
     }
 
     for (const a of avail) {
@@ -158,7 +158,7 @@ export async function checkAmenitiesAndCancel(c: CacheClientAPI): Promise<void> 
                     date: record.date,
                 });
                 if (!day.rateCancel.includes('free_cancellation')) {
-                    throw new Error(`expected free_cancellation in ${JSON.stringify(day.rateCancel)}`);
+                    throw RzError(`expected free_cancellation in ${JSON.stringify(day.rateCancel)}`);
                 }
             } catch (error) {
                 console.error(error);
@@ -176,7 +176,7 @@ export async function checkPropRoomList(c: CacheClientAPI): Promise<void> {
     const sortedRooms = [...rooms].sort();
     const sortedWant = [...want].sort();
     if (JSON.stringify(sortedRooms) !== JSON.stringify(sortedWant)) {
-        throw new Error(`PropRoomList: got ${sortedRooms}, want ${sortedWant}`);
+        throw RzError(`PropRoomList: got ${sortedRooms}, want ${sortedWant}`);
     }
 }
 
@@ -189,7 +189,7 @@ export async function checkDateLists(c: CacheClientAPI): Promise<void> {
     const sortedDates = [...dates].sort();
     const sortedWant = [...want].sort();
     if (JSON.stringify(sortedDates) !== JSON.stringify(sortedWant)) {
-        throw new Error(`date list mismatch: got ${sortedDates} want ${sortedWant}`);
+        throw RzError(`date list mismatch: got ${sortedDates} want ${sortedWant}`);
     }
 }
 
@@ -206,12 +206,12 @@ export async function checkGeoSearch(c: CacheClientAPI): Promise<void> {
     }
 
     if (props.length !== wantMap.size) {
-        throw new Error(`geo search returned ${props.length} props, want ${wantMap.size}`);
+        throw RzError(`geo search returned ${props.length} props, want ${wantMap.size}`);
     }
 
     for (const id of props) {
         if (!wantMap.has(id)) {
-            throw new Error(`unexpected prop in geo result: ${id}`);
+            throw RzError(`unexpected prop in geo result: ${id}`);
         }
         const day = await c.getPropRoomDay({
             propertyID: id,
@@ -222,7 +222,7 @@ export async function checkGeoSearch(c: CacheClientAPI): Promise<void> {
         const wantAvl = 10 + idx;
         const wantPrice = 100 + idx * 10;
         if (day.availability !== wantAvl || day.finalPrice !== wantPrice) {
-            throw new Error(`prop ${id}: got avl=${day.availability} price=${day.finalPrice}, want avl=${wantAvl} price=${wantPrice}`);
+            throw RzError(`prop ${id}: got avl=${day.availability} price=${day.finalPrice}, want avl=${wantAvl} price=${wantPrice}`);
         }
     }
 }
@@ -237,7 +237,7 @@ export async function checkDelRoomDayAndDateList(c: CacheClientAPI): Promise<voi
 
     const dates = await c.propRoomDateList({ propertyID: prop, roomType: room });
     if (dates.includes(date)) {
-        throw new Error(`date ${date} still listed after delete`);
+        throw RzError(`date ${date} still listed after delete`);
     }
 }
 
@@ -245,7 +245,7 @@ export async function checkDelSegment(c: CacheClientAPI): Promise<void> {
     const seg = 'seg10';
     const before = await c.searchProp({ segment: seg });
     if (before.length === 0) {
-        throw new Error(`nothing to delete for ${seg}`);
+        throw RzError(`nothing to delete for ${seg}`);
     }
 
     await c.delSegment(seg);
@@ -262,37 +262,37 @@ export async function checkDeletionCommands(c: CacheClientAPI): Promise<void> {
     const roomType = 'single';
 
     let exists = await c.propExist(propID);
-    if (!exists) throw new Error(`PropExist failed for ${propID}`);
+    if (!exists) throw RzError(`PropExist failed for ${propID}`);
 
     exists = await c.propRoomExist({ propertyID: propID, roomType });
-    if (!exists) throw new Error(`PropRoomExist failed for ${propID}/${roomType}`);
+    if (!exists) throw RzError(`PropRoomExist failed for ${propID}/${roomType}`);
 
     try {
         await c.delPropRoom({ propertyID: propID, roomType });
     } catch (error) {
-        throw new Error(`DelPropRoom failed for ${propID}/${roomType}`);
+        throw RzError(`DelPropRoom failed for ${propID}/${roomType}`);
     }
 
     await sleep(1000);
 
 
     exists = await c.propRoomExist({ propertyID: propID, roomType });
-    if (exists) throw new Error('PropRoomExist still true after DelPropRoom');
+    if (exists) throw RzError('PropRoomExist still true after DelPropRoom');
 
     const rooms = await c.propRoomList(propID);
     if (rooms.includes(roomType)) {
-        throw new Error(`room ${roomType} still in list after DelPropRoom`);
+        throw RzError(`room ${roomType} still in list after DelPropRoom`);
     }
 
     await c.delProp(propID);
     await sleep(1000);
 
     exists = await c.propExist(propID);
-    if (exists) throw new Error('PropExist still true after DelProp');
+    if (exists) throw RzError('PropExist still true after DelProp');
 
     const props = await c.searchProp({ segment: 'seg9' });
     if (props.includes(propID)) {
-        throw new Error(`DelProp did not remove ${propID} from search`);
+        throw RzError(`DelProp did not remove ${propID} from search`);
     }
 }
 
@@ -301,6 +301,6 @@ export async function checkGetSegments(c: CacheClientAPI): Promise<void> {
     const segments = segmentsInfo.map(s => s.segment).sort();
     const want = ['seg9', 'seg10'].sort();
     if (JSON.stringify(segments) !== JSON.stringify(want)) {
-        throw new Error(`GetSegments got ${segments}, want ${want}`);
+        throw RzError(`GetSegments got ${segments}, want ${want}`);
     }
 }
