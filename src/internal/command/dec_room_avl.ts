@@ -1,5 +1,6 @@
 // src/internal/command/dec_room_avl.ts
 import { UpdRoomAvlPayload } from '../../types/request';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildDecRoomAvlPayload(p: UpdRoomAvlPayload): Buffer {

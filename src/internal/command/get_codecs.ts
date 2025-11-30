@@ -1,6 +1,7 @@
 // src/internal/command/get_codecs.ts
 import { Field } from '../protocol/types';
 import { Codecs } from '../../types/codecs';
+import { RzError } from '../err';
 
 export function buildGetCodecsPayload(): Buffer {
     const cmdName = 'GETCODECS';

@@ -11,6 +11,7 @@ import {
     u16ToDate,
     bitmaskToRateCancelStrings,
 } from '../protocol/helpers';
+import { RzError } from '../err';
 
 export function buildSearchAvailPayload(p: SearchAvailPayload): Buffer {
     const cmdName = 'SEARCHAVAIL';

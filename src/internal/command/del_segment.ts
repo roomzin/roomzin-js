@@ -1,4 +1,5 @@
 // src/internal/command/del_segment.ts
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildDelSegmentPayload(segment: string): Buffer {

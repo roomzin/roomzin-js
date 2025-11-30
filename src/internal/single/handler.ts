@@ -5,6 +5,7 @@ import { buildLoginPayload } from '../protocol/login';
 import { prependHeader, drainFrame } from '../protocol/frame';
 import { parseFields } from '../protocol/frame';
 import { ErrConnClosed, ErrTimeout, RawResult } from '../protocol/types';
+import { RzError } from '../err';
 
 export interface SingleConfig {
     addr: string;
@@ -129,7 +130,7 @@ export class SingleHandler {
     async roundTrip(clrId: number, payload: Buffer): Promise<RawResult> {
         const release = await this.mu.acquire();
         try {
-            if (this.closed) throw RzError(err)ConnClosed;
+            if (this.closed) throw RzError(ErrConnClosed);
 
             // Self-heal: reconnect if connection is gone
             if (!this.conn || this.conn.destroyed) {
@@ -161,7 +162,7 @@ export class SingleHandler {
             return await promise;
         } catch (err) {
             release();
-            throw RzError(err);
+            throw RzError(err instanceof Error ? err : String(err));
         }
     }
 

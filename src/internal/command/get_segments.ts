@@ -1,5 +1,6 @@
 // src/internal/command/get_segments.ts
 import { SegmentInfo } from '../../types/response';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildGetSegmentsPayload(): Buffer {

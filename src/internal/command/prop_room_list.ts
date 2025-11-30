@@ -1,4 +1,5 @@
 // src/internal/command/prop_room_list.ts
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildPropRoomListPayload(propertyID: string): Buffer {

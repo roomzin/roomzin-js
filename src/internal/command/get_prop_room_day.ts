@@ -4,6 +4,7 @@ import { GetRoomDayResult } from '../../types/response';
 import { Field } from '../protocol/types';
 import { Codecs } from '../../types/codecs';
 import { bitmaskToRateCancelStrings } from '../protocol/helpers';
+import { RzError } from '../err';
 
 export function buildGetPropRoomDayPayload(p: GetRoomDayRequest): Buffer {
     const cmdName = 'GETPROPROOMDAY';

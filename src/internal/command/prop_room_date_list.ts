@@ -1,5 +1,6 @@
 // src/internal/command/prop_room_date_list.ts
 import { PropRoomDateListPayload } from '../../types/request';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildPropRoomDateListPayload(p: PropRoomDateListPayload): Buffer {

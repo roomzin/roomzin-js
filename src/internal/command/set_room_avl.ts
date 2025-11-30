@@ -1,5 +1,6 @@
 // src/internal/command/set_room_avl.ts
 import { UpdRoomAvlPayload } from '../../types/request';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildSetRoomAvlPayload(p: UpdRoomAvlPayload): Buffer {

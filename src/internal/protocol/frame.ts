@@ -1,3 +1,4 @@
+import { RzError } from '../err';
 import { Header, Field, ErrShortFrame, ErrMissingMagic } from './types';
 
 // PrependHeader takes the already-serialised payload (status string + fields)

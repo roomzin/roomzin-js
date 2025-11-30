@@ -1,5 +1,6 @@
 // src/internal/command/prop_room_exist.ts
 import { PropRoomExistPayload } from '../../types/request';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildPropRoomExistPayload(p: PropRoomExistPayload): Buffer {

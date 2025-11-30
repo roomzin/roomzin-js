@@ -1,4 +1,5 @@
 // src/internal/command/prop_exist.ts
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildPropExistPayload(propertyID: string): Buffer {

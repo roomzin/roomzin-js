@@ -2,6 +2,7 @@
 import { SearchPropPayload } from '../../types/request';
 import { Field } from '../protocol/types';
 import { makeF64, makeU64, bytesToPropertyID } from '../protocol/helpers';
+import { RzError } from '../err';
 
 export function buildSearchPropPayload(p: SearchPropPayload): Buffer {
     const cmdName = 'SEARCHPROP';

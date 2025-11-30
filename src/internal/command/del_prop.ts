@@ -1,4 +1,5 @@
 // src/internal/command/del_prop.ts
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildDelPropPayload(propertyID: string): Buffer {

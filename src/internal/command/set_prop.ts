@@ -1,5 +1,6 @@
 // src/internal/command/set_prop.ts
 import { SetPropPayload } from '../../types/request';
+import { RzError } from '../err';
 import { makeF64 } from '../protocol/helpers';
 import { Field } from '../protocol/types';
 

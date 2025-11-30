@@ -5,6 +5,7 @@ import { parseFields, prependHeader } from '../protocol/frame';
 import { buildLoginPayload } from '../protocol/login';
 import { ClusterError, getClusterInfo } from './httputil';
 import { readFull } from '../protocol/frame';
+import { RzError } from '../err';
 
 const MAGIC = 0xFF;
 const HEADER_SIZE = 9;

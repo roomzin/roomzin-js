@@ -1,5 +1,6 @@
 // src/internal/command/del_prop_day.ts
 import { DelPropDayRequest } from '../../types/request';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildDelPropDayPayload(p: DelPropDayRequest): Buffer {

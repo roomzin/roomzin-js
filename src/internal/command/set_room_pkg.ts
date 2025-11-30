@@ -1,5 +1,6 @@
 // src/internal/command/set_room_pkg.ts
 import { SetRoomPkgPayload } from '../../types/request';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildSetRoomPkgPayload(p: SetRoomPkgPayload): Buffer {

@@ -1,5 +1,6 @@
 // src/internal/command/del_room_day.ts
 import { DelRoomDayRequest } from '../../types/request';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildDelRoomDayPayload(p: DelRoomDayRequest): Buffer {

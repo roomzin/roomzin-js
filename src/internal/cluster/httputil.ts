@@ -1,3 +1,4 @@
+import { RzError } from "../err";
 import { HandlerConfig } from "./handler";
 
 export class ClusterError extends Error {
@@ -202,7 +203,7 @@ export async function getClusterInfo(cfg: HandlerConfig): Promise<{ leader: stri
     }
 
     if (!leaderURL) {
-        throw RzError(err)NoLeaderAvailable;
+        throw RzError(ErrNoLeaderAvailable);
     }
 
     // Find the actual leader host and trusted followers
@@ -220,7 +221,7 @@ export async function getClusterInfo(cfg: HandlerConfig): Promise<{ leader: stri
     }
 
     if (!leader) {
-        throw RzError(err)NoLeaderAvailable;
+        throw RzError(ErrNoLeaderAvailable);
     }
 
     return { leader, followers };

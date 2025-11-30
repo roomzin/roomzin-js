@@ -1,4 +1,5 @@
 import { Codecs } from '../../types/codecs';
+import { RzError } from '../err';
 
 // bitmaskToRateCancelStrings converts 8-bit mask → string[] (same logic as Rust)
 export function bitmaskToRateCancelStrings(codecs: Codecs | null, mask: number): string[] {

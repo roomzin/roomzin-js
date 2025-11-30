@@ -1,5 +1,6 @@
 // src/internal/command/del_prop_room.ts
 import { DelPropRoomPayload } from '../../types/request';
+import { RzError } from '../err';
 import { Field } from '../protocol/types';
 
 export function buildDelPropRoomPayload(p: DelPropRoomPayload): Buffer {
