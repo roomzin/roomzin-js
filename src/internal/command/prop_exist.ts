@@ -43,5 +43,5 @@ export function parsePropExistResp(status: string, fields: Field[]): boolean {
 
     // Error path
     const msg = fields[0]?.data.toString('utf8') ?? 'unknown error';
-    throw new Error(`prop exist error: ${msg}`);
+    throw new Error(`${msg}`);
 }

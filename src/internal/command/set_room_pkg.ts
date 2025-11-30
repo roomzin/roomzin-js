@@ -83,5 +83,5 @@ export function parseSetRoomPkgResp(status: string, fields: Field[]): void {
 
     const msg = fields[0]?.data.toString('utf8') ?? 'unknown error';
     ;
-    throw new Error(`set room package error: ${msg}`);
+    throw new Error(`${msg}`);
 }

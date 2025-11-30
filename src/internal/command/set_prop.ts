@@ -48,5 +48,5 @@ export function buildSetPropPayload(p: SetPropPayload): Buffer {
 
 export function parseSetPropResp(status: string, fields: Field[]): void {
     if (status === 'SUCCESS') return;
-    throw new Error(`set prop error: ${fields[0]?.data.toString('utf8') ?? 'unknown'}`);
+    throw new Error(`${fields[0]?.data.toString('utf8') ?? 'unknown'}`);
 }

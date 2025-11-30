@@ -46,5 +46,5 @@ export function parsePropRoomExistResp(status: string, fields: Field[]): boolean
     }
 
     // On error (including "not found")
-    throw new Error('NOT_FOUND');
+    throw new Error('');
 }

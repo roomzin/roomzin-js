@@ -48,5 +48,5 @@ export function parseSetRoomAvlResp(status: string, fields: Field[]): number {
     }
 
     const msg = fields[0]?.data.toString('utf8') ?? 'unknown error';
-    throw new Error(`set room avl error: ${msg}`);
+    throw new Error(`${msg}`);
 }
