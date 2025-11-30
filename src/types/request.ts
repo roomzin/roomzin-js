@@ -1,6 +1,6 @@
 import { validateAmenities, validateRateCancels } from './codecs';
 
-function validateDate(date: string): [boolean, string] {
+export function validateDate(date: string): [boolean, string] {
     const errors: string[] = [];
 
     // Check format YYYY-MM-DD
@@ -36,7 +36,7 @@ function validateDate(date: string): [boolean, string] {
     return [true, ""];
 }
 
-function validateDates(dates: string[]): [boolean, string] {
+export function validateDates(dates: string[]): [boolean, string] {
     const errors: string[] = [];
     for (const date of dates) {
         const [valid, err] = validateDate(date);
@@ -55,7 +55,7 @@ export type LoginPayload = {
     token: string; // Static token for authentication (optional)
 }
 
-function verifyLoginPayload(p: LoginPayload): [boolean, string] {
+export function verifyLoginPayload(p: LoginPayload): [boolean, string] {
     if (!p.token) {
         return [false, "token is required"];
     }
@@ -75,7 +75,7 @@ export type SetPropPayload = {
     amenities: string[];
 }
 
-function verifySetPropPayload(p: SetPropPayload, codecs: any): [boolean, string] {
+export function verifySetPropPayload(p: SetPropPayload, codecs: any): [boolean, string] {
     const errors: string[] = [];
 
     if (!p.segment) errors.push("segment is required");
@@ -122,8 +122,14 @@ export type DelRoomDayRequest = {
     date: string; // YYYY-MM-DD
 }
 
-function verifyDelRoomDayRequest(p: DelRoomDayRequest): [boolean, string] {
-    return validateDate(p.date);
+export function verifyDelRoomDayRequest(p: DelRoomDayRequest): [boolean, string] {
+    const errors: string[] = [];
+    if (!p.propertyID?.trim()) errors.push('propertyID is required');
+    if (!p.roomType?.trim()) errors.push('roomType is required');
+    const [valid, errMsg] = validateDate(p.date);
+    if (!valid) errors.push(errMsg);
+    if (errors.length > 0) return [false, errors.join("; ")];
+    return [true, ""];
 }
 
 // UpdRoomAvlPayload defines the payload for updating room availability (INCROOMAVL, DECROOMAVL, SETROOMAVL commands).
@@ -134,7 +140,7 @@ export type UpdRoomAvlPayload = {
     amount: number;
 }
 
-function verifyUpdRoomAvlPayload(p: UpdRoomAvlPayload): [boolean, string] {
+export function verifyUpdRoomAvlPayload(p: UpdRoomAvlPayload): [boolean, string] {
     const errors: string[] = [];
 
     if (!p.propertyID) errors.push("propertyID is required");
@@ -158,7 +164,7 @@ export type SetRoomPkgPayload = {
     rateCancel: string[]; // Optional; empty array if not provided
 }
 
-function verifySetRoomPkgPayload(p: SetRoomPkgPayload, codecs: any): [boolean, string] {
+export function verifySetRoomPkgPayload(p: SetRoomPkgPayload, codecs: any): [boolean, string] {
     const errors: string[] = [];
 
     if (!p.propertyID) errors.push("propertyID is required");
@@ -183,8 +189,16 @@ export type GetRoomDayRequest = {
     date: string; // YYYY-MM-DD
 }
 
-function verifyGetRoomDayRequest(p: GetRoomDayRequest): [boolean, string] {
-    return validateDate(p.date);
+export function verifyGetRoomDayRequest(p: GetRoomDayRequest): [boolean, string] {
+    const errors: string[] = [];
+
+    if (!p.propertyID) errors.push("propertyID is required");
+    if (!p.roomType) errors.push("roomType is required");
+    const [valid, err] = validateDate(p.date);
+    if (!valid) errors.push(err);
+
+    if (errors.length > 0) return [false, errors.join("; ")];
+    return [true, ""];
 }
 
 export type SearchPropPayload = {
@@ -199,7 +213,7 @@ export type SearchPropPayload = {
     limit?: number;
 }
 
-function verifySearchPropPayload(p: SearchPropPayload, codecs: any): [boolean, string] {
+export function verifySearchPropPayload(p: SearchPropPayload, codecs: any): [boolean, string] {
     const errors: string[] = [];
 
     if (!p.segment) errors.push("segment is required");
@@ -234,7 +248,7 @@ export type SearchAvailPayload = {
     limit?: number;
 }
 
-function verifySearchAvailPayload(p: SearchAvailPayload, codecs: any): [boolean, string] {
+export function verifySearchAvailPayload(p: SearchAvailPayload, codecs: any): [boolean, string] {
     const errors: string[] = [];
 
     if (!p.segment) errors.push("segment is required");
@@ -263,7 +277,7 @@ export type DelPropDayRequest = {
     date: string; // YYYY-MM-DD
 }
 
-function verifyDelPropDayRequest(p: DelPropDayRequest): [boolean, string] {
+export function verifyDelPropDayRequest(p: DelPropDayRequest): [boolean, string] {
     if (!p.propertyID) return [false, "propertyID is required"];
     return validateDate(p.date);
 }

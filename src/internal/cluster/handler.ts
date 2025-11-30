@@ -503,7 +503,7 @@ export class Handler {
         if (payload.length === 0) throw new Error('empty payload');
 
         if (isWrite && !this.leaderConn) {
-            throw new ClusterError("cluster has no leader");
+            throw new Error("cluster has no leader");
         }
 
         const result = await new Promise<RawResult>((resolve, reject) => {
@@ -531,7 +531,7 @@ export class Handler {
             if (retryResult.status === 'SUCCESS') return retryResult;
         }
 
-        throw new ClusterError(`max retries exceeded: ${code}`);
+        throw new Error(`${code}`);
     }
 
     async close(): Promise<void> {
