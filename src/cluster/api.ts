@@ -48,6 +48,7 @@ import {
 
 import { DelPropDayRequest, DelPropRoomPayload, DelRoomDayRequest, GetRoomDayRequest, PropRoomDateListPayload, PropRoomExistPayload, SearchAvailPayload, SearchPropPayload, SetPropPayload, SetRoomPkgPayload, UpdRoomAvlPayload, verifyDelPropDayRequest, verifyDelRoomDayRequest, verifyGetRoomDayRequest, verifySearchAvailPayload, verifySearchPropPayload, verifySetPropPayload, verifySetRoomPkgPayload, verifyUpdRoomAvlPayload } from '../types/request';
 import { RzError } from '../internal/err';
+import { ErrorKind } from '../types';
 
 export class Client implements CacheClientAPI {
     private handler: Handler;
@@ -63,7 +64,7 @@ export class Client implements CacheClientAPI {
     }
 
     static async create(cfg: ClusterConfig): Promise<Client> {
-        if (!cfg) throw RzError('cfg must not be null');
+        if (!cfg) throw RzError('cfg must not be null', ErrorKind.Client);
 
 
         const handler = new Handler({

@@ -1,5 +1,8 @@
 // src/single/config.ts
 
+import { RzError } from "../internal/err";
+import { ErrorKind } from "../types";
+
 export class Config {
     host = '';
     tcpPort = 0;
@@ -59,7 +62,7 @@ export class ConfigBuilder {
         }
 
         if (errors.length > 0) {
-            throw RzError(`Config validation failed:\n  - ${errors.join('\n  - ')}`);
+            throw RzError(`Config validation failed:\n  - ${errors.join('\n  - ')}`, ErrorKind.Client);
         }
 
         return { ...this.config };

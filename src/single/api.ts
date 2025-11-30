@@ -48,6 +48,7 @@ import {
 
 import { DelPropDayRequest, DelPropRoomPayload, DelRoomDayRequest, GetRoomDayRequest, PropRoomDateListPayload, PropRoomExistPayload, SearchAvailPayload, SearchPropPayload, SetPropPayload, SetRoomPkgPayload, UpdRoomAvlPayload, verifyDelPropDayRequest, verifyDelRoomDayRequest, verifyGetRoomDayRequest, verifySearchAvailPayload, verifySearchPropPayload, verifySetPropPayload, verifySetRoomPkgPayload, verifyUpdRoomAvlPayload } from '../types/request';
 import { RzError } from '../internal/err';
+import { ErrorKind } from '../types';
 
 export class Client implements CacheClientAPI {
     private handler: SingleHandler;
@@ -60,7 +61,7 @@ export class Client implements CacheClientAPI {
     }
 
     static async create(cfg: Config): Promise<Client> {
-        if (!cfg) throw RzError('cfg must not be null');
+        if (!cfg) throw RzError('cfg must not be null', ErrorKind.Client);
 
         const handler = new SingleHandler({
             addr: cfg.host,
@@ -99,7 +100,7 @@ export class Client implements CacheClientAPI {
         return codecs;
     }
 
-    // Returns cached codecs synchronously (safe because we pre-fetch on create)
+    // Returns cached codecs
     private async getCodecsInternal(): Promise<Codecs> {
         if (this.codecs != null) {
             return this.codecs;

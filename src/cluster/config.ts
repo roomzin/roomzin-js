@@ -1,3 +1,6 @@
+import { RzError } from "../internal/err";
+import { ErrorKind } from "../types";
+
 export class ClusterConfig {
     seedHosts = '';
     apiPort = 0;
@@ -68,7 +71,7 @@ export class ClusterConfigBuilder {
         if (!this.config.authToken) errors.push('authentication requires a token');
 
         if (errors.length > 0) {
-            throw RzError(`ClusterConfig validation failed:\n  • ${errors.join('\n  • ')}`);
+            throw RzError(`ClusterConfig validation failed:\n  • ${errors.join('\n  • ')}`, ErrorKind.Client);
         }
 
         // Return a shallow clone + freeze for immutability
