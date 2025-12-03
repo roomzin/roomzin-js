@@ -1,3 +1,4 @@
+import { RzError } from '../src/internal/err';
 import { CacheClientAPI } from './../src/api/client';
 // ─────────────────────────────────────────────────────────────────────────────
 // Tiny utilities (exact Go equivalents)

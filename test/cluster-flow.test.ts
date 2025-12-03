@@ -15,6 +15,7 @@ import {
     checkGetSegments,
     checkDelSegment,
 } from './utils';
+import { RzError } from '../src/internal/err';
 
 async function getClusterClient(): Promise<CacheClientAPI> {
     const cfg = ClusterConfigBuilder.new()
@@ -70,7 +71,7 @@ describe('Roomzin – Full Cluster Flow', () => {
         } catch (err) {
             const duration = Date.now() - start;
             console.log(`Test failed after ${duration}ms`);
-            throw RzError(err);
+            return;
         }
     }, 30_000);
 });

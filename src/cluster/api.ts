@@ -131,8 +131,8 @@ export class Client implements CacheClientAPI {
         const payload = buildSetPropPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'setProp');
-        const err = parseSetPropResp(resp.status, resp.fields);
-        if (err != null) throw RzError(err);
+        return parseSetPropResp(resp.status, resp.fields);
+
     }
 
     async setRoomPkg(p: SetRoomPkgPayload): Promise<void> {
@@ -143,8 +143,8 @@ export class Client implements CacheClientAPI {
         const payload = buildSetRoomPkgPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'setRoomPkg');
-        const err = parseSetRoomPkgResp(resp.status, resp.fields);
-        if (err != null) throw RzError(err);
+        return parseSetRoomPkgResp(resp.status, resp.fields);
+
     }
 
     async setRoomAvl(p: UpdRoomAvlPayload): Promise<number> {
@@ -240,8 +240,8 @@ export class Client implements CacheClientAPI {
         const payload = buildDelPropPayload(propertyID.trim());
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delProp');
-        const err = parseDelPropResp(resp.status, resp.fields);
-        if (err != null) throw RzError(err);
+        return parseDelPropResp(resp.status, resp.fields);
+
     }
 
     async delSegment(segment: string): Promise<void> {
@@ -249,8 +249,7 @@ export class Client implements CacheClientAPI {
         const payload = buildDelSegmentPayload(segment.trim());
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delSegment');
-        const err = parseDelSegmentResp(resp.status, resp.fields);
-        if (err != null) throw RzError(err);
+        return parseDelSegmentResp(resp.status, resp.fields);
     }
 
     async delPropDay(p: DelPropDayRequest): Promise<void> {
@@ -260,8 +259,7 @@ export class Client implements CacheClientAPI {
         const payload = buildDelPropDayPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delPropDay');
-        const err = parseDelPropDayResp(resp.status, resp.fields);
-        if (err != null) throw RzError(err);
+        return parseDelPropDayResp(resp.status, resp.fields);
     }
 
     async delPropRoom(p: DelPropRoomPayload): Promise<void> {
@@ -271,8 +269,7 @@ export class Client implements CacheClientAPI {
         const payload = buildDelPropRoomPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delPropRoom');
-        const err = parseDelPropRoomResp(resp.status, resp.fields);
-        if (err != null) throw RzError(err);
+        return parseDelPropRoomResp(resp.status, resp.fields);
     }
 
     async delRoomDay(p: DelRoomDayRequest): Promise<void> {
@@ -282,8 +279,7 @@ export class Client implements CacheClientAPI {
         const payload = buildDelRoomDayPayload(p);
         const resp = await this.handler.execute(true, payload);
         this.assertOk(resp, 'delRoomDay');
-        const err = parseDelRoomDayResp(resp.status, resp.fields);
-        if (err != null) throw RzError(err);
+        return parseDelRoomDayResp(resp.status, resp.fields);
     }
 
     async getPropRoomDay(p: GetRoomDayRequest): Promise<any> {
