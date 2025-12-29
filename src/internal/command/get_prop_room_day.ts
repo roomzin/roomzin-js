@@ -53,18 +53,24 @@ export function parseGetPropRoomDayResp(
         throw RzError(msg);
     }
 
-    // SUCCESS response has exactly 5 fields
     if (fields.length < 5) {
         throw RzError(`expected 5 response fields, got ${fields.length}`);
     }
 
     const [f0, f1, f2, f3, f4] = fields;
 
+    // Validate rate_cancel field length (now u32 = 4 bytes)
+    if (f4.data.length !== 4) {
+        throw RzError(`invalid rate_cancel field length: expected 4 bytes, got ${f4.data.length}`);
+    }
+
+    const rateCancelMask = f4.data.readUInt32LE(0);
+
     return {
         propertyID: f0.data.toString('utf8'),
         date: f1.data.toString('utf8'),
         availability: f2.data[0],
         finalPrice: f3.data.readUInt32LE(0),
-        rateCancel: bitmaskToRateCancelStrings(codecs, f4.data[0]),
+        rateCancel: bitmaskToRateCancelStrings(codecs, rateCancelMask),
     };
 }

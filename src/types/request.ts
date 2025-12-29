@@ -1,4 +1,4 @@
-import { validateAmenities, validateRateCancels } from './codecs';
+import { validateRateCancels } from './codecs';
 
 export function validateDate(date: string): [boolean, string] {
     const errors: string[] = [];
@@ -86,12 +86,6 @@ export function verifySetPropPayload(p: SetPropPayload, codecs: any): [boolean, 
     if (p.stars === 0 || p.stars > 5) errors.push("stars must be between 1 and 5");
     if (p.latitude < -90 || p.latitude > 90) errors.push("latitude must be between -90 and 90");
     if (p.longitude < -180 || p.longitude > 180) errors.push("longitude must be between -180 and 180");
-
-    if (p.amenities.length > 0) {
-        // Assuming validateAmenities exists
-        const [ok, err] = validateAmenities(codecs, p.amenities);
-        if (!ok) errors.push(err);
-    }
 
     if (errors.length > 0) return [false, errors.join("; ")];
     return [true, ""];
@@ -220,11 +214,6 @@ export function verifySearchPropPayload(p: SearchPropPayload, codecs: any): [boo
     if (p.stars && (p.stars === 0 || p.stars > 5)) errors.push("stars must be 1–5");
     if (p.latitude && (p.latitude < -90 || p.latitude > 90)) errors.push("latitude must be between -90 and 90");
     if (p.longitude && (p.longitude < -180 || p.longitude > 180)) errors.push("longitude must be between -180 and 180");
-
-    if (p.amenities) {
-        const [ok, err] = validateAmenities(codecs, p.amenities);
-        if (!ok) errors.push(err);
-    }
 
     if (errors.length > 0) return [false, errors.join("; ")];
     return [true, ""];

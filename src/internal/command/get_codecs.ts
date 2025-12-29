@@ -40,14 +40,8 @@ export function parseGetCodecsResp(status: string, fields: Field[]): Codecs {
 
 function parseCodecsFromDelimited(data: Buffer): Codecs {
     const str = data.toString('utf8');
-    const parts = str.split('|');
 
-    if (parts.length !== 2) {
-        throw RzError(`invalid codecs format: expected 2 parts, got ${parts.length}`);
-    }
+    const rateCancels = str.split(',').filter(item => item !== '');
 
-    const amenities = parts[0].split(',').filter(item => item !== '');
-    const rateCancels = parts[1].split(',').filter(item => item !== '');
-
-    return { amenities, rateCancels };
+    return { rateCancels };
 }

@@ -107,7 +107,8 @@ export function parseSearchAvailResp(
             throw RzError(`property "${propertyID}" days count mismatch: expected ${numDays}, got ${daysCount}`);
         }
 
-        const expectedLen = 2 + daysCount * 8;
+        // Updated: 11 bytes per day (date 2 + avail 1 + price 4 + rate_cancel u32 4)
+        const expectedLen = 2 + daysCount * 11;
         if (data.length !== expectedLen) {
             throw RzError(`property "${propertyID}" days vector length mismatch: expected ${expectedLen}, got ${data.length}`);
         }
@@ -117,12 +118,11 @@ export function parseSearchAvailResp(
 
         for (let d = 0; d < daysCount; d++) {
             const datePacked = data.readUInt16LE(cursor); cursor += 2;
-            const availability = data[cursor++];
+            const availability = data[cursor]; cursor += 1;
             const finalPrice = data.readUInt32LE(cursor); cursor += 4;
-            const rateCancelMask = data[cursor++];
+            const rateCancelMask = data.readUInt32LE(cursor); cursor += 4;
 
             const date = u16ToDate(datePacked);
-
             days.push({
                 date,
                 availability,

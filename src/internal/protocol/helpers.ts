@@ -1,13 +1,14 @@
 import { Codecs } from '../../types/codecs';
 import { RzError } from '../err';
 
-// bitmaskToRateCancelStrings converts 8-bit mask → string[] (same logic as Rust)
+// bitmaskToRateCancelStrings converts 24-bit mask → string[] (matches Rust bitmask_to_rate_cancel_string)
 export function bitmaskToRateCancelStrings(codecs: Codecs | null, mask: number): string[] {
-    if (!codecs) {
+    if (!codecs || !codecs.rateCancels) {
         return [];
     }
+
     const out: string[] = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 24 && i < codecs.rateCancels.length; i++) {
         if (mask & (1 << i)) {
             out.push(codecs.rateCancels[i]);
         }
