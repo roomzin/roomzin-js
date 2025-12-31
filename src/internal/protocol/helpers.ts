@@ -1,16 +1,16 @@
 import { Codecs } from '../../types/codecs';
 import { RzError } from '../err';
 
-// bitmaskToRateCancelStrings converts 24-bit mask → string[] (matches Rust bitmask_to_rate_cancel_string)
-export function bitmaskToRateCancelStrings(codecs: Codecs | null, mask: number): string[] {
-    if (!codecs || !codecs.rateCancels) {
+// bitmaskToRateFeatureStrings converts 24-bit mask → string[] (matches Rust bitmask_to_rate_feature_string)
+export function bitmaskToRateFeatureStrings(codecs: Codecs | null, mask: number): string[] {
+    if (!codecs || !codecs.rateFeatures) {
         return [];
     }
 
     const out: string[] = [];
-    for (let i = 0; i < 24 && i < codecs.rateCancels.length; i++) {
+    for (let i = 0; i < 24 && i < codecs.rateFeatures.length; i++) {
         if (mask & (1 << i)) {
-            out.push(codecs.rateCancels[i]);
+            out.push(codecs.rateFeatures[i]);
         }
     }
     return out;

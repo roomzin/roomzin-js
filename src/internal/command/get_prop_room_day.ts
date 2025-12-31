@@ -3,7 +3,7 @@ import { GetRoomDayRequest } from '../../types/request';
 import { GetRoomDayResult } from '../../types/response';
 import { Field } from '../protocol/types';
 import { Codecs } from '../../types/codecs';
-import { bitmaskToRateCancelStrings } from '../protocol/helpers';
+import { bitmaskToRateFeatureStrings } from '../protocol/helpers';
 import { RzError } from '../err';
 
 export function buildGetPropRoomDayPayload(p: GetRoomDayRequest): Buffer {
@@ -59,18 +59,18 @@ export function parseGetPropRoomDayResp(
 
     const [f0, f1, f2, f3, f4] = fields;
 
-    // Validate rate_cancel field length (now u32 = 4 bytes)
+    // Validate rate_feature field length (now u32 = 4 bytes)
     if (f4.data.length !== 4) {
-        throw RzError(`invalid rate_cancel field length: expected 4 bytes, got ${f4.data.length}`);
+        throw RzError(`invalid rate_feature field length: expected 4 bytes, got ${f4.data.length}`);
     }
 
-    const rateCancelMask = f4.data.readUInt32LE(0);
+    const rateFeatureMask = f4.data.readUInt32LE(0);
 
     return {
         propertyID: f0.data.toString('utf8'),
         date: f1.data.toString('utf8'),
         availability: f2.data[0],
         finalPrice: f3.data.readUInt32LE(0),
-        rateCancel: bitmaskToRateCancelStrings(codecs, rateCancelMask),
+        rateFeature: bitmaskToRateFeatureStrings(codecs, rateFeatureMask),
     };
 }

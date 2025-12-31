@@ -36,13 +36,13 @@ export function buildSetRoomPkgPayload(p: SetRoomPkgPayload): Buffer {
         });
     }
 
-    // Optional: RateCancel list → comma-separated string
-    if (p.rateCancel && p.rateCancel.length > 0) {
-        const rateCancelStr = p.rateCancel.join(',');
+    // Optional: RateFeature list → comma-separated string
+    if (p.rateFeature && p.rateFeature.length > 0) {
+        const rateFeatureStr = p.rateFeature.join(',');
         fields.push({
             id: 0x06,
             type: 0x01,
-            data: Buffer.from(rateCancelStr),
+            data: Buffer.from(rateFeatureStr),
         });
     }
 

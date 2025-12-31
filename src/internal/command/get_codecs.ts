@@ -41,7 +41,7 @@ export function parseGetCodecsResp(status: string, fields: Field[]): Codecs {
 function parseCodecsFromDelimited(data: Buffer): Codecs {
     const str = data.toString('utf8');
 
-    const rateCancels = str.split(',').filter(item => item !== '');
+    const rateFeatures = str.split(',').filter(item => item !== '');
 
-    return { rateCancels };
+    return { rateFeatures };
 }

@@ -1,4 +1,4 @@
-import { validateRateCancels } from './codecs';
+import { validateRateFeatures } from './codecs';
 
 export function validateDate(date: string): [boolean, string] {
     const errors: string[] = [];
@@ -155,7 +155,7 @@ export type SetRoomPkgPayload = {
     date: string; // YYYY-MM-DD
     availability?: number;
     finalPrice?: number;
-    rateCancel: string[]; // Optional; empty array if not provided
+    rateFeature: string[]; // Optional; empty array if not provided
 }
 
 export function verifySetRoomPkgPayload(p: SetRoomPkgPayload, codecs: any): [boolean, string] {
@@ -167,8 +167,8 @@ export function verifySetRoomPkgPayload(p: SetRoomPkgPayload, codecs: any): [boo
     const [validDate, dateErr] = validateDate(p.date);
     if (!validDate) errors.push(dateErr);
 
-    if (p.rateCancel.length > 0) {
-        const [ok, err] = validateRateCancels(codecs, p.rateCancel);
+    if (p.rateFeature.length > 0) {
+        const [ok, err] = validateRateFeatures(codecs, p.rateFeature);
         if (!ok) errors.push(err);
     }
 
@@ -233,7 +233,7 @@ export type SearchAvailPayload = {
     date: string[];
     availability?: number;
     finalPrice?: number;
-    rateCancel: string[];
+    rateFeature: string[];
     limit?: number;
 }
 
@@ -249,8 +249,8 @@ export function verifySearchAvailPayload(p: SearchAvailPayload, codecs: any): [b
     const [validDates, datesErr] = validateDates(p.date);
     if (!validDates) errors.push(datesErr);
 
-    if (p.rateCancel.length > 0) {
-        const [ok, err] = validateRateCancels(codecs, p.rateCancel);
+    if (p.rateFeature.length > 0) {
+        const [ok, err] = validateRateFeatures(codecs, p.rateFeature);
         if (!ok) errors.push(err);
     }
 

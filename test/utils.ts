@@ -36,7 +36,7 @@ function pickAmenities(i: number): string[] {
     return opts[i % opts.length];
 }
 
-function pickCancel(i: number): string[] {
+function pickFeature(i: number): string[] {
     const all = [
         'free_cancellation',
         'non_refundable',
@@ -89,7 +89,7 @@ export async function seedTestData(c: CacheClientAPI): Promise<void> {
                             date: d,
                             availability: avail,
                             finalPrice: price,
-                            rateCancel: pickCancel(i),
+                            rateFeature: pickFeature(i),
                         });
                     }
                 }
@@ -135,7 +135,7 @@ export async function checkSegmentIsolation(c: CacheClientAPI): Promise<void> {
     }
 }
 
-export async function checkAmenitiesAndCancel(c: CacheClientAPI): Promise<void> {
+export async function checkAmenitiesAndFeatures(c: CacheClientAPI): Promise<void> {
     const limit = 300;
     const avail = await c.searchAvail({
         segment: 'seg9',
@@ -143,7 +143,7 @@ export async function checkAmenitiesAndCancel(c: CacheClientAPI): Promise<void> 
         date: [tomorrow()],
         limit,
         amenities: ['pool'],
-        rateCancel: ['free_cancellation'],
+        rateFeature: ['free_cancellation'],
     });
 
     if (avail.length === 0) {
@@ -158,8 +158,8 @@ export async function checkAmenitiesAndCancel(c: CacheClientAPI): Promise<void> 
                     roomType: 'single',
                     date: record.date,
                 });
-                if (!day.rateCancel.includes('free_cancellation')) {
-                    throw RzError(`expected free_cancellation in ${JSON.stringify(day.rateCancel)}`);
+                if (!day.rateFeature.includes('free_cancellation')) {
+                    throw RzError(`expected free_cancellation in ${JSON.stringify(day.rateFeature)}`);
                 }
             } catch (error) {
                 console.error(error);

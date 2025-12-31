@@ -9,7 +9,7 @@ import {
     makeU64,
     bytesToPropertyID,
     u16ToDate,
-    bitmaskToRateCancelStrings,
+    bitmaskToRateFeatureStrings,
 } from '../protocol/helpers';
 import { RzError } from '../err';
 
@@ -34,7 +34,7 @@ export function buildSearchAvailPayload(p: SearchAvailPayload): Buffer {
     if (p.date.length > 0) fields.push({ id: 0x0B, type: 0x01, data: Buffer.from(p.date.join(',')) });
     if (p.availability !== undefined) fields.push({ id: 0x0C, type: 0x02, data: Buffer.from([p.availability]) });
     if (p.finalPrice !== undefined) fields.push({ id: 0x0D, type: 0x03, data: makeU32(p.finalPrice) });
-    if (p.rateCancel.length > 0) fields.push({ id: 0x0E, type: 0x01, data: Buffer.from(p.rateCancel.join(',')) });
+    if (p.rateFeature.length > 0) fields.push({ id: 0x0E, type: 0x01, data: Buffer.from(p.rateFeature.join(',')) });
     if (p.limit !== undefined) fields.push({ id: 0x0F, type: 0x03, data: makeU64(p.limit) });
 
     // Dynamic size — safe
@@ -107,7 +107,7 @@ export function parseSearchAvailResp(
             throw RzError(`property "${propertyID}" days count mismatch: expected ${numDays}, got ${daysCount}`);
         }
 
-        // Updated: 11 bytes per day (date 2 + avail 1 + price 4 + rate_cancel u32 4)
+        // Updated: 11 bytes per day (date 2 + avail 1 + price 4 + rate_feature u32 4)
         const expectedLen = 2 + daysCount * 11;
         if (data.length !== expectedLen) {
             throw RzError(`property "${propertyID}" days vector length mismatch: expected ${expectedLen}, got ${data.length}`);
@@ -120,14 +120,14 @@ export function parseSearchAvailResp(
             const datePacked = data.readUInt16LE(cursor); cursor += 2;
             const availability = data[cursor]; cursor += 1;
             const finalPrice = data.readUInt32LE(cursor); cursor += 4;
-            const rateCancelMask = data.readUInt32LE(cursor); cursor += 4;
+            const rateFeatureMask = data.readUInt32LE(cursor); cursor += 4;
 
             const date = u16ToDate(datePacked);
             days.push({
                 date,
                 availability,
                 finalPrice,
-                rateCancel: bitmaskToRateCancelStrings(codecs, rateCancelMask),
+                rateFeature: bitmaskToRateFeatureStrings(codecs, rateFeatureMask),
             });
         }
 

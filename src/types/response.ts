@@ -4,7 +4,7 @@ export type GetRoomDayResult = {
     date: string;
     availability: number;
     finalPrice: number;
-    rateCancel: string[];
+    rateFeature: string[];
 };
 
 // DayAvail one day inside a property.
@@ -12,7 +12,7 @@ export type DayAvail = {
     date: string;
     availability: number;
     finalPrice: number;
-    rateCancel: string[];
+    rateFeature: string[];
 };
 
 // PropertyAvail one property + all its days.

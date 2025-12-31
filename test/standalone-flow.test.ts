@@ -5,7 +5,7 @@ import {
     seedTestData,
     updateAvailTestData,
     checkSegmentIsolation,
-    checkAmenitiesAndCancel,
+    checkAmenitiesAndFeatures,
     checkPropRoomList,
     checkDateLists,
     checkGeoSearch,
@@ -45,7 +45,7 @@ describe('Roomzin Cache – Full Standalone Flow', () => {
             await seedTestData(client);
             await updateAvailTestData(client);
             await checkSegmentIsolation(client);
-            await checkAmenitiesAndCancel(client);
+            await checkAmenitiesAndFeatures(client);
             await checkPropRoomList(client);
             await checkDateLists(client);
             await checkGeoSearch(client);
