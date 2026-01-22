@@ -117,28 +117,6 @@ class DemuxMap {
     }
 }
 
-class RollingAverage {
-    private samples: number[] = [];
-    private idx = 0;
-    private sum = 0;
-    private count = 0;
-
-    constructor(private size: number) {
-        this.samples = new Array(size).fill(0);
-    }
-
-    add(v: number) {
-        if (this.count < this.size) this.count++;
-        else this.sum -= this.samples[this.idx];
-        this.samples[this.idx] = v;
-        this.sum += v;
-        this.idx = (this.idx + 1) % this.size;
-    }
-
-    get() {
-        return this.count === 0 ? 0 : this.sum / this.count;
-    }
-}
 
 interface Request {
     payload: Buffer;
@@ -148,15 +126,13 @@ interface Request {
 }
 
 class Connection extends EventEmitter {
-    public latency = 0;
-    public avgLatency = new RollingAverage(100);
     public closed = false;
 
     private socket: net.Socket;
     private pendingHeader: Buffer | null = null;
 
     private readonly owner?: Handler;        // only set for followers
-    private readonly myAddress?: string;     // only set for followers
+    public readonly address?: string;     // only set for followers
 
     constructor(
         socket: net.Socket,
@@ -168,7 +144,7 @@ class Connection extends EventEmitter {
         super();
         this.socket = socket;
         this.owner = owner;
-        this.myAddress = address;
+        this.address = address;
         socket.setNoDelay(true);
         socket.setKeepAlive(true, cfg.KeepAlive);
 
@@ -254,14 +230,10 @@ class Connection extends EventEmitter {
         clearTimeout(pending.timer);
         pending.resolved = true;
 
-        const latency = Date.now() - pending.sentAt;
-        this.latency = latency;
-        this.avgLatency.add(latency);
 
         if (status === 'ERROR' && fields.length > 0) {
             const code = fields[0].data.toString();
             if (['308', '405', '503'].includes(code)) this.close();
-            if (code === '429') this.avgLatency.add(50);
         }
 
         pending.resolve({ status, fields });
@@ -283,9 +255,9 @@ class Connection extends EventEmitter {
         this.socket.destroy();
         this.pendingHeader = null;
 
-        if (this.owner && this.myAddress) {
+        if (this.owner && this.address) {
             // We are a follower → tell owner to remove us from the map
-            this.owner['removeFollower'](this.myAddress);
+            this.owner['removeFollower'](this.address);
         }
 
         this.emit('close');
@@ -309,7 +281,8 @@ export class Handler {
     private leaderDemux: DemuxMap;
     private followerDemux: DemuxMap;
     private leaderConn?: Connection;
-    private followerConns = new Map<string, Connection>();
+    private followerConns: Connection[] = [];
+    private followerRRIndex = 0;
     private leaderClrID = 0;
     private followerClrID = 0;
     private reqChan = new Channel<Request>(QUEUE_CAPACITY);
@@ -336,7 +309,14 @@ export class Handler {
     }
 
     private removeFollower(addr: string) {
-        this.followerConns.delete(addr);
+        const index = this.followerConns.findIndex(c => c.address === addr);
+        if (index !== -1) {
+            this.followerConns.splice(index, 1);
+            // Adjust round-robin index if needed
+            if (this.followerRRIndex >= this.followerConns.length) {
+                this.followerRRIndex = 0;
+            }
+        }
     }
 
     private async connect(host: string): Promise<net.Socket> {
@@ -392,22 +372,30 @@ export class Handler {
             const { followers } = await getClusterInfo(this.cfg);
             const wanted = new Set(followers);
 
-            for (const [addr, conn] of this.followerConns) {
-                if (!wanted.has(addr)) {
+            // Update existing connections
+            for (let i = this.followerConns.length - 1; i >= 0; i--) {
+                const conn = this.followerConns[i];
+                if (!conn.address || !wanted.has(conn.address)) {
                     conn.close();
-                    this.followerConns.delete(addr);
+                    this.followerConns.splice(i, 1);
+                    if (this.followerRRIndex >= this.followerConns.length) {
+                        this.followerRRIndex = 0;
+                    }
                 }
             }
 
+            // Add new connections
             for (const addr of wanted) {
-                if (this.followerConns.has(addr)) continue;
+                const exists = this.followerConns.some(c => c.address === addr);
+                if (exists) continue;
+
                 try {
                     const socket = await this.connect(addr);
                     const conn = new Connection(socket, this.followerDemux, this.cfg, this, addr);
-                    this.followerConns.set(addr, conn);
-                } catch { }
+                    this.followerConns.push(conn);
+                } catch { /* ignore connection errors */ }
             }
-        } catch { }
+        } catch { /* ignore sync errors */ }
     }
 
     private startLeaderWorker() {
@@ -430,7 +418,7 @@ export class Handler {
 
         this.followerFastCheckTimer = setInterval(() => {
             const allClosed = [...this.followerConns.values()].every(c => c.closed);
-            if (allClosed && this.followerConns.size > 0) {
+            if (allClosed && this.followerConns.length > 0) {
                 this.syncFollowers().catch(() => { });
             }
         }, 100).unref();
@@ -447,7 +435,7 @@ export class Handler {
                 let conn: Connection | undefined;
 
                 while (Date.now() < deadline) {
-                    conn = req.isWrite ? this.leaderConn : this.bestFollower();
+                    conn = req.isWrite ? this.leaderConn : this.nextFollowerConnection();
                     if (conn && !conn.closed) break;
                     await new Promise(r => setTimeout(r, backoff));
                     backoff = Math.min(backoff * 2, 1000);
@@ -489,15 +477,26 @@ export class Handler {
         }
     }
 
-    private bestFollower(): Connection | undefined {
-        const alive = [...this.followerConns.values()].filter(c => !c.closed);
-        if (alive.length === 0) return undefined;
-        const scored = alive.filter(c => c.avgLatency.get() > 0);
-        if (scored.length > 0) {
-            scored.sort((a, b) => a.avgLatency.get() - b.avgLatency.get());
-            return scored[0];
+    private nextFollowerConnection(): Connection | undefined {
+        if (this.followerConns.length === 0) return undefined;
+
+        // Simple round-robin
+        const startIndex = this.followerRRIndex;
+        let attempts = 0;
+
+        while (attempts < this.followerConns.length) {
+            const index = (startIndex + attempts) % this.followerConns.length;
+            const conn = this.followerConns[index];
+
+            if (!conn.closed) {
+                this.followerRRIndex = (index + 1) % this.followerConns.length;
+                return conn;
+            }
+
+            attempts++;
         }
-        return alive[0];
+
+        return undefined;
     }
 
     async execute(isWrite: boolean, payload: Buffer): Promise<RawResult> {
@@ -553,6 +552,6 @@ export class Handler {
         this.followerDemux.destroy();
         this.leaderConn?.close();
         for (const c of this.followerConns.values()) c.close();
-        this.followerConns.clear();
+        this.followerConns = [];
     }
 }
