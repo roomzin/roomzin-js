@@ -28,13 +28,13 @@ export function buildSearchAvailPayload(p: SearchAvailPayload): Buffer {
     if (p.type) fields.push({ id: 0x05, type: 0x01, data: Buffer.from(p.type) });
     if (p.stars !== undefined) fields.push({ id: 0x06, type: 0x02, data: Buffer.from([p.stars]) });
     if (p.category) fields.push({ id: 0x07, type: 0x01, data: Buffer.from(p.category) });
-    if (p.amenities.length > 0) fields.push({ id: 0x08, type: 0x01, data: Buffer.from(p.amenities.join(',')) });
+    if (p.amenities && p.amenities.length > 0) fields.push({ id: 0x08, type: 0x01, data: Buffer.from(p.amenities.join(',')) });
     if (p.longitude !== undefined) fields.push({ id: 0x09, type: 0x03, data: makeF64(p.longitude) });
     if (p.latitude !== undefined) fields.push({ id: 0x0A, type: 0x03, data: makeF64(p.latitude) });
     if (p.date.length > 0) fields.push({ id: 0x0B, type: 0x01, data: Buffer.from(p.date.join(',')) });
     if (p.availability !== undefined) fields.push({ id: 0x0C, type: 0x02, data: Buffer.from([p.availability]) });
     if (p.finalPrice !== undefined) fields.push({ id: 0x0D, type: 0x03, data: makeU32(p.finalPrice) });
-    if (p.rateFeature.length > 0) fields.push({ id: 0x0E, type: 0x01, data: Buffer.from(p.rateFeature.join(',')) });
+    if (p.rateFeature && p.rateFeature.length > 0) fields.push({ id: 0x0E, type: 0x01, data: Buffer.from(p.rateFeature.join(',')) });
     if (p.limit !== undefined) fields.push({ id: 0x0F, type: 0x03, data: makeU64(p.limit) });
 
     // Dynamic size — safe

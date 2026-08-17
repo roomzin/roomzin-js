@@ -1,6 +1,6 @@
 import net from 'net';
 import { Mutex } from 'async-mutex';
-import { RoomzinConfig } from '../client/RoomzinConfig';
+import { RoomzinConfig } from '../client/config';
 import { Mode, RawResult, ErrConnClosed, ErrTimeout, CODEC_SEGMENT } from './protocol/types';
 import { prependHeader, prependRouterHeader, buildKeepaliveFrame, drainFrame, parseFields } from './protocol/frame';
 import { RzError } from './err';

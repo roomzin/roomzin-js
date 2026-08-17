@@ -1,2 +1,2 @@
-export { RoomzinClient } from './RoomzinClient';
-export { RoomzinConfig, RoomzinConfigBuilder, createRoomzinConfig } from './RoomzinConfig';
+export { RoomzinClient } from './client';
+export { RoomzinConfig, RoomzinConfigBuilder, createRoomzinConfig } from './config';

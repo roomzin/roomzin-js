@@ -1,6 +1,6 @@
 // src/client/RoomzinClient.ts
-import { RoomzinConfig } from './RoomzinConfig';
-import { RoomzinHandler } from '../internal/RoomzinHandler';
+import { RoomzinConfig } from './config';
+import { RoomzinHandler } from '../internal/handler';
 import { CODEC_SEGMENT, RawResult } from '../internal/protocol/types';
 import { RzError } from '../internal/err';
 import * as commands from '../internal/command';

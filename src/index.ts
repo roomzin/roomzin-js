@@ -1,6 +1,6 @@
 // Unified client
-export { RoomzinClient } from './client/RoomzinClient';
-export { RoomzinConfig, RoomzinConfigBuilder, createRoomzinConfig } from './client/RoomzinConfig';
+export { RoomzinClient } from './client/client';
+export { RoomzinConfig, RoomzinConfigBuilder, createRoomzinConfig } from './client/config';
 
 // Types
 export * from './types';
