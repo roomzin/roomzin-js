@@ -2,19 +2,19 @@
 
 Official Node.js SDK for [Roomzin](https://m-javani.github.io/roomzin-doc/) — a high-performance in-memory inventory engine for booking platforms.
 
-The SDK provides a modern TypeScript API for communicating with Roomzin servers in both standalone and clustered deployments. It automatically manages routing, failover, connection pooling, and cluster topology changes.
+The SDK provides a modern TypeScript API for communicating with Roomzin servers in both standalone and clustered deployments. It automatically handles connection management, request/response demuxing, and self-healing reconnections.
 
 ---
 
 ## Features
 
-- Automatic request routing (leader for writes, followers for reads)
-- Built-in failover and cluster discovery
-- Connection pooling
-- Standalone and clustered deployment support
+- Unified client for standalone and router (cluster) modes
+- Built-in connection self-healing
+- Automatic request routing (writes to leader, reads to followers) via router
 - Fully typed TypeScript API
 - Promise-based asynchronous API
 - Reusable, concurrency-safe client
+- Type-safe API with segment support
 
 ---
 
@@ -22,6 +22,7 @@ The SDK provides a modern TypeScript API for communicating with Roomzin servers 
 
 - Node.js 18 or later
 - Roomzin Server v1.x
+- Roomzin Router (for cluster mode)
 
 ---
 
@@ -39,85 +40,74 @@ pnpm add roomzin-js
 
 ## Client Setup
 
-### Standalone
+### Standalone Mode
+
+Connect directly to a standalone Roomzin server:
 
 ```typescript
-import { SingleClient } from 'roomzin-js';
+import { RoomzinClient, createRoomzinConfig, Mode } from 'roomzin-js';
 
-const client = await SingleClient.create({
-    host: '127.0.0.1',
-    tcpPort: 7777,
-    authToken: 'abc123',
-    timeout: 5000,        // 5 seconds
-    keepAlive: 30000,     // 30 seconds
-});
+const config = createRoomzinConfig()
+    .withAddr('127.0.0.1')
+    .withPort(7777)
+    .withMode(Mode.STANDALONE)
+    .withTimeout(5000)        // 5 seconds
+    .withKeepAlive(30000)     // 30 seconds
+    .build();
+
+const client = new RoomzinClient(config);
+await client.connect();
 
 // Use client...
 await client.close();
 ```
 
-### Cluster (Static Discovery)
+### Cluster Mode (via Router)
+
+Connect to a Roomzin cluster through the router:
 
 ```typescript
-import { ClusterClient, ClusterConfigBuilder } from 'roomzin-js';
-import type { NodeAddr } from 'roomzin-js';
+import { RoomzinClient, createRoomzinConfig, Mode } from 'roomzin-js';
 
-const staticDiscovery: NodeAddr[] = [
-    { node_id: 'roomzin-0', addr: '172.20.0.10', tcp_port: 7777, api_port: 8080 },
-    { node_id: 'roomzin-1', addr: '172.20.0.11', tcp_port: 7777, api_port: 8080 },
-    { node_id: 'roomzin-2', addr: '172.20.0.12', tcp_port: 7777, api_port: 8080 },
-];
-
-const cfg = ClusterConfigBuilder.new()
-    .withSeedNodeIds('roomzin-0,roomzin-1,roomzin-2')
-    .withStaticDiscovery(staticDiscovery)
-    .withAPIPort(8080)
-    .withTCPPort(7777)
-    .withToken('abc123')
-    .withTimeout(5000)
-    .withHttpTimeout(5000)
+const config = createRoomzinConfig()
+    .withAddr('router.example.com')
+    .withPort(9200)
+    .withMode(Mode.ROUTER)
+    .withTimeout(30000)
     .withKeepAlive(30000)
-    .withMaxActiveConns(100)
     .build();
 
-const client = await ClusterClient.create(cfg);
+const client = new RoomzinClient(config);
+await client.connect();
 await client.close();
-```
-
-### Cluster (HTTP Discovery)
-
-```typescript
-const cfg = ClusterConfigBuilder.new()
-    .withSeedNodeIds('roomzin-0,roomzin-1,roomzin-2')
-    .withHTTPDiscovery('http://discovery-service:8080/nodes')
-    .withAPIPort(8080)
-    .withTCPPort(7777)
-    .withToken('abc123')
-    .withTimeout(5000)
-    .withHttpTimeout(5000)
-    .withKeepAlive(30000)
-    .build();
-
-const client = await ClusterClient.create(cfg);
 ```
 
 ---
 
-## Discovery Configuration
+## Configuration Options
 
-Roomzin SDKs need to know how to reach each Roomzin node in the cluster. The cluster nodes communicate with each other using internal address resolvers, but the SDK as an external client needs actual network addresses (IP:port or hostname:port) to connect.
+| Option | Description | Default |
+|--------|-------------|---------|
+| `withAddr()` | Server or router address | Required |
+| `withPort()` | TCP port | Required |
+| `withMode()` | `Mode.STANDALONE` or `Mode.ROUTER` | `Mode.STANDALONE` |
+| `withTimeout()` | Request timeout (ms) | 2000 |
+| `withKeepAlive()` | TCP keep-alive interval (ms) | 30000 |
 
-The SDK fetches the cluster topology from the Roomzin cluster itself. This topology includes the node identities of the leader and followers. The SDK then uses discovery to resolve these node identities into actual network addresses.
+---
 
-Two discovery modes are supported:
+## Segment Routing
 
-### Static Discovery
+In cluster mode, every request must specify a segment. The router uses this to route the request to the correct shard.
 
-The SDK gets the mapping once in config and never updates it. Use this when your cluster nodes have stable, predictable addresses.
+```typescript
+const segment = 'us-east';
 
-### HTTP Discovery
+// All API methods accept segment as a parameter
+await client.setProp(segment, payload);
+```
 
-The SDK periodically fetches the mapping from an HTTP endpoint. Use this when cluster nodes are dynamic (e.g., Kubernetes pods with changing IPs).
+In standalone mode, the segment parameter is ignored but still required for API compatibility. This allows you to switch between standalone and cluster modes without changing your business logic.
 
 ---
 
@@ -127,7 +117,7 @@ The SDK periodically fetches the mapping from an HTTP endpoint. Use this when cl
 Adds or updates a property.
 
 ```typescript
-await client.setProp({
+await client.setProp('downtown', {
     segment: 'downtown',
     area: 'manhattan',
     propertyID: 'hotel_123',
@@ -145,16 +135,16 @@ Searches properties by segment, area, type, or location.
 
 ```typescript
 // By segment
-const ids = await client.searchProp({ segment: 'downtown' });
+const ids = await client.searchProp('downtown', { segment: 'downtown' });
 
 // By area
-const ids = await client.searchProp({
+const ids = await client.searchProp('downtown', {
     segment: 'downtown',
     area: 'manhattan',
 });
 
 // By location (radius search)
-const ids = await client.searchProp({
+const ids = await client.searchProp('downtown', {
     segment: 'downtown',
     latitude: 40.7128,
     longitude: -74.0060,
@@ -165,14 +155,14 @@ const ids = await client.searchProp({
 Checks if a property exists.
 
 ```typescript
-const exists = await client.propExist('hotel_123');
+const exists = await client.propExist('downtown', 'hotel_123');
 ```
 
 ### propRoomExist
 Checks if a specific room type exists for a property.
 
 ```typescript
-const exists = await client.propRoomExist({
+const exists = await client.propRoomExist('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
 });
@@ -182,14 +172,14 @@ const exists = await client.propRoomExist({
 Lists all room types for a property.
 
 ```typescript
-const rooms = await client.propRoomList('hotel_123');
+const rooms = await client.propRoomList('downtown', 'hotel_123');
 ```
 
 ### propRoomDateList
 Lists dates with availability data for a property and room type.
 
 ```typescript
-const dates = await client.propRoomDateList({
+const dates = await client.propRoomDateList('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
 });
@@ -203,7 +193,7 @@ const dates = await client.propRoomDateList({
 Sets availability, price, and rate features for a room type on a date.
 
 ```typescript
-await client.setRoomPkg({
+await client.setRoomPkg('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
     date: '2026-07-20',
@@ -217,7 +207,7 @@ await client.setRoomPkg({
 Sets exact availability for a room type on a specific date.
 
 ```typescript
-const newAvail = await client.setRoomAvl({
+const newAvail = await client.setRoomAvl('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
     date: '2026-07-20',
@@ -229,7 +219,7 @@ const newAvail = await client.setRoomAvl({
 Increases availability (e.g., on cancellation).
 
 ```typescript
-const newAvail = await client.incRoomAvl({
+const newAvail = await client.incRoomAvl('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
     date: '2026-07-20',
@@ -241,7 +231,7 @@ const newAvail = await client.incRoomAvl({
 Decreases availability (e.g., on booking).
 
 ```typescript
-const newAvail = await client.decRoomAvl({
+const newAvail = await client.decRoomAvl('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
     date: '2026-07-20',
@@ -253,7 +243,7 @@ const newAvail = await client.decRoomAvl({
 Gets availability and pricing for a specific room on a specific date.
 
 ```typescript
-const day = await client.getPropRoomDay({
+const day = await client.getPropRoomDay('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
     date: '2026-07-20',
@@ -269,7 +259,7 @@ console.log(`Avail: ${day.availability}, Price: ${day.finalPrice}`);
 Searches available rooms by filters.
 
 ```typescript
-const results = await client.searchAvail({
+const results = await client.searchAvail('downtown', {
     segment: 'downtown',
     roomType: 'suite',
     date: ['2026-07-20', '2026-07-21'],
@@ -285,16 +275,6 @@ for (const result of results) {
     for (const day of result.days) {
         console.log(`  ${day.date}: Avail ${day.availability}, Price ${day.finalPrice}`);
     }
-}
-```
-
-### getSegments
-Lists all active segments with their property counts.
-
-```typescript
-const segments = await client.getSegments();
-for (const seg of segments) {
-    console.log(`${seg.segment}: ${seg.count} properties`);
 }
 ```
 
@@ -314,7 +294,7 @@ console.log(codecs.rateFeatures);
 Deletes availability for a specific room on a specific date.
 
 ```typescript
-await client.delRoomDay({
+await client.delRoomDay('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
     date: '2026-07-20',
@@ -325,7 +305,7 @@ await client.delRoomDay({
 Deletes all data for a property on a specific date.
 
 ```typescript
-await client.delPropDay({
+await client.delPropDay('downtown', {
     propertyID: 'hotel_123',
     date: '2026-07-20',
 });
@@ -335,7 +315,7 @@ await client.delPropDay({
 Deletes a room type from a property.
 
 ```typescript
-await client.delPropRoom({
+await client.delPropRoom('downtown', {
     propertyID: 'hotel_123',
     roomType: 'suite',
 });
@@ -345,7 +325,7 @@ await client.delPropRoom({
 Deletes an entire property.
 
 ```typescript
-await client.delProp('hotel_123');
+await client.delProp('downtown', 'hotel_123');
 ```
 
 ### delSegment
@@ -365,7 +345,7 @@ Every SDK operation may reject with a `RoomzinError`. Use the provided helper fu
 import { IsRequest, IsRetry, IsClient, IsInternal } from 'roomzin-js';
 
 try {
-    await client.setRoomPkg(payload);
+    await client.setRoomPkg('downtown', payload);
 } catch (err) {
     if (IsRequest(err)) {
         // Business rule violation - fix the request
@@ -373,7 +353,7 @@ try {
     } else if (IsRetry(err)) {
         // Temporary condition - retry with backoff
         await sleep(100);
-        await client.setRoomPkg(payload);
+        await client.setRoomPkg('downtown', payload);
     } else if (IsClient(err)) {
         // Authentication or protocol errors
         console.log('Client error:', err.message);
@@ -393,7 +373,7 @@ try {
 |----------|-------------|--------|
 | **Client** | Authentication or protocol errors | Check credentials and configuration |
 | **Request** | Invalid input or business rule violation | Fix request, don't retry |
-| **Retry** | Temporary server condition (429, 503, 308) | Retry with backoff |
+| **Retry** | Temporary server condition (429, 503) | Retry with backoff |
 | **Internal** | Unexpected server response | Log and investigate |
 
 ---
@@ -404,14 +384,15 @@ Create a **single client** during application startup and reuse it throughout yo
 
 ```typescript
 // ✅ Good - create once, reuse
-const client = await SingleClient.create(config);
+const client = new RoomzinClient(config);
+await client.connect();
 // Use client everywhere...
 await client.close();
 
 // ❌ Bad - creating per request
 for (const req of requests) {
-    const client = await SingleClient.create(config); // Don't do this
-    await client.setRoomPkg(req);
+    const client = new RoomzinClient(config); // Don't do this
+    await client.setRoomPkg('downtown', req);
     await client.close();
 }
 ```
@@ -420,40 +401,58 @@ The client is safe for concurrent use and manages TCP connections internally.
 
 ---
 
-## API Reference
+## Architecture
 
-For the complete interface definition, see [`src/api/client.ts`](src/api/client.ts). All types are documented with JSDoc comments.
+### Standalone Mode
+
+```
+[SDK] → [Standalone Server]
+```
+
+- Single TCP connection
+- Direct communication
+- Self-healing on disconnection
+
+### Cluster Mode
+
+```
+[SDK] → [Router] → [Shard Leader/Followers]
+```
+
+- SDK sends segment and isWrite flag in header
+- Router routes writes to leader, reads to followers
+- Router handles cluster topology
+- SDK maintains single connection to router
+
+### Protocol
+
+The SDK uses a framed binary protocol:
+
+**Standalone Frame:**
+```
+[0xFF][ClrID(4)][TotalLen(4)][Payload]
+```
+
+**Router Frame:**
+```
+[0xFE][TotalLen(4)][SegmentLen(1)][Segment(n)][IsWrite(1)][ShardFrame]
+```
+
+Where `ShardFrame` is the standalone frame format.
 
 ---
 
 ## Examples
 
-Check out the [`examples/nodejs/`](examples/nodejs/) directory for a complete runnable example project.
+A complete smoke example is available in the `examples/nodejs/` directory. It demonstrates the SDK's core features and can be run as a reference implementation or to verify your Roomzin setup.
 
-### Quick Start
-
-1. Clone this repository or copy the `examples/nodejs/` directory
-2. Update the configuration in `smoke.ts`:
-   - Change `MODE` to `"standalone"` or `"cluster"`
-   - Update `STATIC_DISCOVERY` with your cluster node IPs
-   - Adjust `STANDALONE_HOST` and `STANDALONE_PORT` if needed
-   - Update `TOKEN` to match your Roomzin configuration
-3. Run the example:
-   ```bash
-   cd examples/nodejs
-   npm install
-   npm start
-   ```
-
-The example demonstrates all major API operations:
-- Property creation and management
-- Room package setup
-- Availability updates (set, increment, decrement)
-- Search and query
-- Delete operations
+```bash
+cd examples/nodejs
+npm install
+npm start
+```
 
 ---
-
 
 ## Documentation
 
@@ -492,5 +491,4 @@ This SDK is licensed under the [BUSL-1.1 License](LICENSE).
 
 - [Roomzin Quickstart](https://github.com/m-javani/roomzin-quickstart) — Local Docker cluster
 - [Roomzin Bench](https://github.com/m-javani/roomzin-bench) — Benchmarking tool
-
----
+```
