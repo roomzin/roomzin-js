@@ -227,13 +227,13 @@ export type SearchAvailPayload = {
     type?: string;
     stars?: number;
     category?: string;
-    amenities: string[];
+    amenities?: string[];
     longitude?: number;
     latitude?: number;
     date: string[];
     availability?: number;
     finalPrice?: number;
-    rateFeature: string[];
+    rateFeature?: string[];
     limit?: number;
 }
 
@@ -249,7 +249,7 @@ export function verifySearchAvailPayload(p: SearchAvailPayload, codecs: any): [b
     const [validDates, datesErr] = validateDates(p.date);
     if (!validDates) errors.push(datesErr);
 
-    if (p.rateFeature.length > 0) {
+    if (p.rateFeature && p.rateFeature.length > 0) {
         const [ok, err] = validateRateFeatures(codecs, p.rateFeature);
         if (!ok) errors.push(err);
     }

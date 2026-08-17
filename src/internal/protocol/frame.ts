@@ -1,5 +1,5 @@
 import { RzError } from '../err';
-import { Header, Field, ErrShortFrame, ErrMissingMagic } from './types';
+import { Header, Field, ErrShortFrame, ErrMissingMagic, SHARD_MAGIC, ROUTER_MAGIC, KEEPALIVE_SEGMENT } from './types';
 
 // PrependHeader takes the already-serialised payload (status string + fields)
 // and returns a complete frame ready to write to the server:
@@ -9,12 +9,70 @@ export function prependHeader(clrID: number, payload: Buffer): Buffer {
     const totalLen = payload.length;
     const out = Buffer.alloc(9 + totalLen);
 
-    out[0] = 0xFF; // magic byte
+    out[0] = SHARD_MAGIC; // magic byte
     out.writeUInt32LE(clrID, 1); // clrID at position 1-4
     out.writeUInt32LE(totalLen, 5); // totalLen at position 5-8
     payload.copy(out, 9); // payload at position 9+
 
     return out;
+}
+
+/**
+ * Builds a router frame for cluster mode:
+ * | routerMagic(1) | totalLen(4) | segmentLen(1) | segment(n) | isWrite(1) | shardFrame |
+ * where shardFrame is the output of prependHeader
+ */
+export function prependRouterHeader(segment: string, isWrite: boolean, clrId: number, payload: Buffer): Buffer {
+    const segmentBytes = Buffer.from(segment, 'utf8');
+    const segmentLen = segmentBytes.length;
+
+    // Shard frame: magic(1) + clrid(4) + totalLen(4) + payload
+    const shardTotalLen = payload.length;
+    const shardFrameLen = 9 + shardTotalLen;
+
+    // Router header: segmentLen(1) + segment(n) + isWrite(1)
+    const routerHeaderLen = 1 + segmentLen + 1;
+
+    // Total frame: routerMagic(1) + totalLen(4) + routerHeader + shardFrame
+    const totalLen = 1 + 4 + routerHeaderLen + shardFrameLen;
+
+    const buf = Buffer.alloc(totalLen);
+    let offset = 0;
+
+    // Router magic
+    buf.writeUInt8(ROUTER_MAGIC, offset++);
+
+    // Total length (everything after this field)
+    buf.writeUInt32LE(routerHeaderLen + shardFrameLen, offset);
+    offset += 4;
+
+    // Segment length
+    buf.writeUInt8(segmentLen, offset++);
+
+    // Segment
+    segmentBytes.copy(buf, offset);
+    offset += segmentLen;
+
+    // IsWrite flag
+    buf.writeUInt8(isWrite ? 0x01 : 0x00, offset++);
+
+    // Shard frame (magic, clrid, totalLen, payload)
+    buf.writeUInt8(SHARD_MAGIC, offset++);
+    buf.writeUInt32LE(clrId, offset);
+    offset += 4;
+    buf.writeUInt32LE(shardTotalLen, offset);
+    offset += 4;
+    payload.copy(buf, offset);
+
+    return buf;
+}
+
+/**
+ * Builds a keepalive frame for router mode:
+ * Uses special segment "__keepalive__" with empty payload
+ */
+export function buildKeepaliveFrame(clrId: number): Buffer {
+    return prependRouterHeader(KEEPALIVE_SEGMENT, false, clrId, Buffer.alloc(0));
 }
 
 // DrainFrame reads a full frame and returns header + raw payload.
@@ -26,7 +84,7 @@ export async function drainFrame(stream: NodeJS.ReadableStream): Promise<[Header
     await readFull(stream, fix);
 
     // Frame layout: [0xFF][ClrID:4][payloadLen:4]
-    if (fix[0] !== 0xFF) {
+    if (fix[0] !== SHARD_MAGIC) {
         throw RzError(`bad magic byte: got 0x${fix[0].toString(16).padStart(2, '0')}`);
     }
 

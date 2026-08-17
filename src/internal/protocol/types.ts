@@ -1,3 +1,13 @@
+export const SHARD_MAGIC = 0xFF;
+export const ROUTER_MAGIC = 0xFE;
+export const CODEC_SEGMENT = "__codecs__";
+export const KEEPALIVE_SEGMENT = "__keepalive__";
+
+export enum Mode {
+    STANDALONE = 'standalone',
+    ROUTER = 'router',
+}
+
 export const ErrConnClosed = new Error("connection closed");
 export const ErrTimeout = new Error("request timed out");
 export const ErrShortFrame = new Error("incomplete frame");
@@ -15,7 +25,6 @@ export type Field = {
     data: Buffer;
 };
 
-// Add this missing type
 export type RawResult = {
     status: string;
     fields: Field[];

@@ -16,4 +16,3 @@ export { buildDelPropDayPayload, parseDelPropDayResp } from './del_prop_day';
 export { buildDelPropRoomPayload, parseDelPropRoomResp } from './del_prop_room';
 export { buildDelRoomDayPayload, parseDelRoomDayResp } from './del_room_day';
 export { buildGetPropRoomDayPayload, parseGetPropRoomDayResp } from './get_prop_room_day';
-export { buildGetSegmentsPayload, parseGetSegmentsResp } from './get_segments';

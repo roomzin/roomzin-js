@@ -1,35 +1,29 @@
-// src/internal/single/handler.ts
 import net from 'net';
 import { Mutex } from 'async-mutex';
-import { buildLoginPayload } from '../protocol/login';
-import { prependHeader, drainFrame } from '../protocol/frame';
-import { parseFields } from '../protocol/frame';
-import { ErrConnClosed, ErrTimeout, RawResult } from '../protocol/types';
-import { RzError } from '../err';
+import { RoomzinConfig } from '../client/RoomzinConfig';
+import { Mode, RawResult, ErrConnClosed, ErrTimeout, CODEC_SEGMENT } from './protocol/types';
+import { prependHeader, prependRouterHeader, buildKeepaliveFrame, drainFrame, parseFields } from './protocol/frame';
+import { RzError } from './err';
 
-export interface SingleConfig {
-    addr: string;
-    tcpPort: number;
-    authToken: string;
-    timeout: number;    // ms
-    keepAlive: number;  // ms
-}
-
-export class SingleHandler {
-    private config: SingleConfig;
+export class RoomzinHandler {
+    private config: RoomzinConfig;
     private conn: net.Socket | null = null;
     private nextId = 0;
     private mu = new Mutex();
     private closed = false;
     private demux = new Map<number, { resolve: (r: RawResult) => void; timer?: NodeJS.Timeout }>();
     private onReconnect?: () => void;
+    private keepaliveInterval?: NodeJS.Timeout;
 
-    constructor(config: SingleConfig) {
+    constructor(config: RoomzinConfig) {
         this.config = config;
     }
 
     async connect(): Promise<void> {
         await this.reconnect();
+        if (this.config.mode === Mode.ROUTER) {
+            this.startKeepalive();
+        }
     }
 
     private async reconnect(): Promise<void> {
@@ -40,8 +34,7 @@ export class SingleHandler {
                 this.conn = null;
             }
 
-            const host = this.parseHost(this.config.addr);
-            const addr = `${host}:${this.config.tcpPort}`;
+            const addr = `${this.config.addr}:${this.config.port}`;
 
             this.conn = await this.dial(addr);
             this.startReadLoop();
@@ -58,53 +51,37 @@ export class SingleHandler {
                 reject(new Error('dial timeout'));
             }, this.config.timeout);
 
-            socket.connect(this.config.tcpPort, this.parseHost(this.config.addr), () => clearTimeout(timeout));
-
-            socket.once('connect', async () => {
-                try {
-                    await this.handshake(socket);
-                    socket.setKeepAlive(true, this.config.keepAlive);
-                    clearTimeout(timeout);
-                    resolve(socket);
-                } catch (err) {
-                    socket.destroy();
-                    reject(err);
-                }
+            socket.connect(this.config.port, this.config.addr, () => {
+                clearTimeout(timeout);
+                socket.setKeepAlive(true, this.config.keepAlive);
+                resolve(socket);
             });
 
-            socket.on('error', (err) => {
+            socket.once('error', (err) => {
                 clearTimeout(timeout);
                 reject(err);
             });
         });
     }
 
-    private handshake(socket: net.Socket): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error('handshake timeout')), this.config.timeout);
-            const payload = buildLoginPayload(this.config.authToken);
-            const frame = prependHeader(0, payload);
-            socket.write(frame);
+    private startKeepalive(): void {
+        if (this.keepaliveInterval) return;
+        this.keepaliveInterval = setInterval(() => {
+            if (this.closed || !this.conn || this.conn.destroyed) return;
+            try {
+                const frame = buildKeepaliveFrame(0);
+                this.conn.write(frame);
+            } catch (_e) {
+                // Ignore write errors, reconnect will handle
+            }
+        }, this.config.keepAlive);
+    }
 
-            const onData = (data: Buffer) => {
-                clearTimeout(timer);
-                socket.removeListener('error', onError);
-                const resp = data.toString('utf8').trim();
-                if (resp === 'LOGIN OK') {
-                    resolve();
-                } else if (resp === 'LOGIN FAILED') {
-                    reject(new Error('login failed: invalid token'));
-                } else {
-                    reject(new Error(`unexpected login reply: "${resp}"`));
-                }
-            };
-            const onError = (err: Error) => {
-                clearTimeout(timer);
-                reject(err);
-            };
-            socket.once('data', onData);
-            socket.once('error', onError);
-        });
+    private stopKeepalive(): void {
+        if (this.keepaliveInterval) {
+            clearInterval(this.keepaliveInterval);
+            this.keepaliveInterval = undefined;
+        }
     }
 
     async close(): Promise<void> {
@@ -112,6 +89,7 @@ export class SingleHandler {
         try {
             if (this.closed) return;
             this.closed = true;
+            this.stopKeepalive();
             if (this.conn) this.conn.destroy();
             for (const entry of this.demux.values()) {
                 clearTimeout(entry.timer);
@@ -127,19 +105,19 @@ export class SingleHandler {
         return ++this.nextId;
     }
 
-    async roundTrip(clrId: number, payload: Buffer): Promise<RawResult> {
+    async execute(segment: string, isWrite: boolean, payload: Buffer): Promise<RawResult> {
         const release = await this.mu.acquire();
         try {
             if (this.closed) throw RzError(ErrConnClosed);
 
-            // Self-heal: reconnect if connection is gone
             if (!this.conn || this.conn.destroyed) {
                 release();
                 await this.reconnect();
-                return this.roundTrip(clrId, payload); // retry once
+                return this.execute(segment, isWrite, payload);
             }
 
-            const ch: (r: RawResult) => void = () => { };
+            const clrId = this.nextID();
+
             const promise = new Promise<RawResult>((resolve) => {
                 const timer = setTimeout(() => {
                     this.demux.delete(clrId);
@@ -150,7 +128,13 @@ export class SingleHandler {
                 this.demux.set(clrId, { resolve, timer });
             });
 
-            const frame = prependHeader(clrId, payload);
+            let frame: Buffer;
+            if (this.config.mode === Mode.ROUTER) {
+                frame = prependRouterHeader(segment, isWrite, clrId, payload);
+            } else {
+                frame = prependHeader(clrId, payload);
+            }
+
             this.conn.write(frame, (err) => {
                 if (err) {
                     this.demux.delete(clrId);
@@ -184,7 +168,6 @@ export class SingleHandler {
                     }
                 }
             } catch (err) {
-                // Connection died
                 this.failAll(err instanceof Error ? err : new Error('read error'));
                 if (this.onReconnect) this.onReconnect();
             }
@@ -200,11 +183,6 @@ export class SingleHandler {
             this.demux.delete(id);
         }
         if (this.onReconnect) this.onReconnect();
-    }
-
-    private parseHost(addr: string): string {
-        const parts = addr.split(':');
-        return parts.length > 1 ? parts[0] : addr;
     }
 
     setOnReconnect(callback: () => void): void {
